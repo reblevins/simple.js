@@ -2,12 +2,37 @@ import _ from 'lodash';
 const path = require('path');
 const Handlebars = require("handlebars");
 
-export const init = (data) => {
-    var appTemplate = require('./src/App.hbs');
-    console.log(appTemplate);
+export const init = ({ template, data = {}}) => {
     var appDiv = document.createElement('div');
-    appDiv.innerHTML = appTemplate(data);
+    var templateDiv = document.createElement('div');
+    templateDiv.innerHTML = template;
+    templateDiv.style.display = "none"
     document.body.appendChild(appDiv);
+    document.body.appendChild(templateDiv);
+
+    var index = 0;
+    var bindings = {};
+    var textNodes = template.match(/\{\{((?:.|\r?\n)+?)\}\}/g);
+    textNodes.forEach((node, i) => {
+        var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
+        var textNode = document.createTextNode(data[boundValue])
+        bindings[boundValue] = {
+            boundValue: boundValue,
+            elements: []
+        }
+        bindings[boundValue].elements.push(textNode);
+        var text = document.createTextNode(template.substring(index, template.indexOf(node)))
+        index += node.length
+        appDiv.appendChild(text)
+        appDiv.appendChild(textNode)
+        console.log(index, template.substring(index, template.indexOf(node)));
+        // console.log(textNode);
+        // appDiv.innerHTML = appDiv.innerHTML.replace(node, textNode.textContent)
+    });
+
+
+    console.log(bindings);
+    // var keys = textNodes.
 
     const name = "AppController"
     function AppController() {
@@ -33,11 +58,11 @@ export const init = (data) => {
     var ctrl = new controllers[name].factory();
     controllers[name].instances.push(ctrl);
 
-    console.log(appDiv.querySelectorAll('*'));
-    var bindings = {};
-    Array.prototype.slice.call(appDiv.querySelectorAll('[model]'))
+    console.log(templateDiv.querySelectorAll('[v-model]'));
+    Array.prototype.slice.call(templateDiv.querySelectorAll('[v-model]'))
     .map(function (element) {
-        var boundValue = element.getAttribute('model');
+        console.log(element);
+        var boundValue = element.getAttribute('v-model');
 
         if (!bindings[boundValue]) {
             bindings[boundValue] = {
@@ -46,19 +71,24 @@ export const init = (data) => {
             }
         }
         bindings[boundValue].elements.push(element);
+        appDiv.appendChild(element);
     });
+    console.log(bindings);
 
     // Update DOM element bound when controller property is set
         var proxy = new Proxy (ctrl, {
             set: function (target, prop, value, receiver) {
                 var bind = bindings[prop];
                 if (bind) {
+                    console.log(bind);
                     bind.elements.forEach(function (element) {
                         element.value = value;
-                        element.setAttribute('value', value);
-                        element.innerHTML = value;
+                        element.innerHTML = value
+                        element.textContent = value
+                        // element.setAttribute('value', value);
                     });
                 }
+                // appDiv.childNodes[0].textContent = value
                 return Reflect.set(target, prop, value);
             }
         });
@@ -70,7 +100,6 @@ export const init = (data) => {
             bind.elements.forEach(function (element) {
                 element.addEventListener('input', function (event) {
                     proxy[bind.boundValue] = event.target.value;
-                    console.log(appTemplate(proxy));
                 });
             })
         });

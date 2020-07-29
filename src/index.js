@@ -1,3 +1,5 @@
 import {init} from '../simpel.js';
 
-init({ title: 'Simpel' });
+var appTemplate = require('./App.html');
+
+init({ template: appTemplate, data: { title: 'Simpel', more: 'More' }});

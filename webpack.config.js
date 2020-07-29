@@ -20,7 +20,8 @@ module.exports = {
     ],
     module: {
         rules: [
-            { test: /\.hbs$/, loader: "handlebars-loader" }
+            { test: /\.hbs$/, loader: "handlebars-loader" },
+            { test: /\.html$/, loader: "html-loader" }
         ]
     },
     output: {
