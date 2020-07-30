@@ -5,29 +5,16 @@ const Handlebars = require("handlebars");
 export const init = ({ template, data = {}}) => {
     var appDiv = document.createElement('div');
     var templateDiv = document.createElement('div');
-    templateDiv.innerHTML = template;
+    appDiv.innerHTML = template;
     templateDiv.style.display = "none"
     document.body.appendChild(appDiv);
-    document.body.appendChild(templateDiv);
 
     var index = 0;
     var bindings = {};
     var textNodes = template.match(/\{\{((?:.|\r?\n)+?)\}\}/g);
     textNodes.forEach((node, i) => {
         var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
-        var textNode = document.createTextNode(data[boundValue])
-        bindings[boundValue] = {
-            boundValue: boundValue,
-            elements: []
-        }
-        bindings[boundValue].elements.push(textNode);
-        var text = document.createTextNode(template.substring(index, template.indexOf(node)))
-        index += node.length
-        appDiv.appendChild(text)
-        appDiv.appendChild(textNode)
-        console.log(index, template.substring(index, template.indexOf(node)));
-        // console.log(textNode);
-        // appDiv.innerHTML = appDiv.innerHTML.replace(node, textNode.textContent)
+        appDiv.innerHTML = appDiv.innerHTML.replace(node, `<simpel-text model="${boundValue}">${_.get(data, boundValue)}</simpel-text>`)
     });
 
 
@@ -58,56 +45,67 @@ export const init = ({ template, data = {}}) => {
     var ctrl = new controllers[name].factory();
     controllers[name].instances.push(ctrl);
 
-    console.log(templateDiv.querySelectorAll('[v-model]'));
-    Array.prototype.slice.call(templateDiv.querySelectorAll('[v-model]'))
-    .map(function (element) {
-        console.log(element);
-        var boundValue = element.getAttribute('v-model');
+    Array.prototype.slice.call(appDiv.querySelectorAll('[list]'))
+    .map(element => {
+        var boundValue = element.getAttribute('list');
+        if (Array.isArray(data[boundValue])) {
+            data[boundValue].forEach(listElement => {
 
-        if (!bindings[boundValue]) {
-            bindings[boundValue] = {
+            })
+        }
+    })
+
+    Array.prototype.slice.call(appDiv.querySelectorAll('[model]'))
+    .map(function (element) {
+        var boundValue = element.getAttribute('model');
+        if (element.tagName.toLowerCase() == 'simpel-text') {
+            var textNode = document.createTextNode(element.innerHTML)
+            var parentDiv = element.parentNode
+            parentDiv.replaceChild(textNode, element)
+            element = textNode
+        }
+
+        if (!_.get(bindings, boundValue)) {
+            _.set(bindings, boundValue, {
                 boundValue: boundValue,
                 elements: []
-            }
+            })
         }
-        bindings[boundValue].elements.push(element);
-        appDiv.appendChild(element);
+        _.get(bindings, boundValue).elements.push(element);
+        // appDiv.appendChild(element);
     });
     console.log(bindings);
 
     // Update DOM element bound when controller property is set
-        var proxy = new Proxy (ctrl, {
-            set: function (target, prop, value, receiver) {
-                var bind = bindings[prop];
-                if (bind) {
-                    console.log(bind);
-                    bind.elements.forEach(function (element) {
-                        element.value = value;
-                        element.innerHTML = value
-                        element.textContent = value
-                        // element.setAttribute('value', value);
-                    });
-                }
-                // appDiv.childNodes[0].textContent = value
-                return Reflect.set(target, prop, value);
+    let proxyHandler = {
+        set: function (target, prop, value, receiver) {
+            if (typeof ctrl[prop] === 'object') {
+                console.log(target);
             }
-        });
-
-        // Listen for DOM element update to set the controller property
-        Object.keys(bindings).forEach(function (boundValue) {
-            var bind = bindings[boundValue];
-            // console.log(bind);
-            bind.elements.forEach(function (element) {
-                element.addEventListener('input', function (event) {
-                    proxy[bind.boundValue] = event.target.value;
+            var bind = _.get(bindings, prop);
+            if (bind) {
+                // console.log(bind);
+                bind.elements.forEach(function (element) {
+                    console.log(value);
+                    element.value = value;
+                    element.innerHTML = value
+                    element.textContent = value
+                    // element.setAttribute('value', value);
                 });
-            })
-        });
+            }
+            // appDiv.childNodes[0].textContent = value
+            return Reflect.set(target, prop, value);
+        }
+    }
+    var proxy = new Proxy (ctrl, proxyHandler);
 
-        // Fill proxy with ctrl properties
-        // and return proxy, not the ctrl!
-        Object.assign(proxy, ctrl);
-        return proxy;
+    // Listen for DOM element update to set the controller property
+    addListeners(proxy, bindings)
+
+    // Fill proxy with ctrl properties
+    // and return proxy, not the ctrl!
+    Object.assign(proxy, ctrl);
+    return proxy;
 }
     // var debug = document.getElementById('debug')
     // var addController = function (name, constructor) {
@@ -146,6 +144,25 @@ export const init = ({ template, data = {}}) => {
 //         }
 //     }
 // }
+
+function addListeners(proxy, bindings) {
+    Object.keys(bindings).forEach(function(boundValue) {
+        console.log(bindings[boundValue]);
+        var bind = bindings[boundValue]
+        if (!bindings[boundValue].boundValue) {
+            console.log(proxy[bind.boundValue], typeof proxy[bind.boundValue]);
+            addListeners(proxy, bindings[boundValue])
+            return
+        }
+        bind.elements.forEach(function (element) {
+            // console.log(element);
+            element.addEventListener('input', function (event) {
+                // console.log(event.target.value);
+                proxy[bind.boundValue] = event.target.value;
+            });
+        })
+    });
+}
 
 function handleArray(element, data) {
     let innerElements = []
@@ -237,3 +254,32 @@ function replaceTag(tag, arrayElement, value) {
 function handleCheckboxChange(event) {
     console.log(event);
 }
+
+class SimpleText extends HTMLElement {
+    constructor() {
+        super()
+
+        // Create a shadow root
+        const shadow = this.attachShadow({mode: 'open'});
+        console.log(this.innerHTML);
+
+        const textNode = document.createTextNode(this.innerHTML)
+        shadow.appendChild(textNode)
+    }
+}
+customElements.define('simple-text', SimpleText);
+
+// class SimpleList extends HTMLElement {
+//     constructor() {
+//         super()
+//
+//         // Create a shadow root
+//         const shadow = this.attachShadow({mode: 'open'});
+//         console.log(this.innerHTML);
+//
+//         var tag = this.getAttribute('tag') || 'li'
+//         var listElement = document.createElement(tag)
+//         shadow.appendChild(listElement)
+//     }
+// }
+// customElements.define('simple-list', SimpleList);
