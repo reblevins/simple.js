@@ -10,8 +10,10 @@ export const init = ({ template, data = {}}) => {
     document.body.appendChild(appDiv);
 
     var index = 0;
-    var bindings = {};
-    var textNodes = template.match(/\{\{((?:.|\r?\n)+?)\}\}/g);
+    var end = template.length;
+    var templateHTML = templateDiv.innerHTML
+    var textNodes = templateHTML.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
+    console.log(textNodes);
     textNodes.forEach((node, i) => {
         var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
         appDiv.innerHTML = appDiv.innerHTML.replace(node, `<simpel-text model="${boundValue}">${_.get(data, boundValue)}</simpel-text>`)
