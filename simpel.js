@@ -6,27 +6,63 @@ export const init = ({ template, data = {}}) => {
     var appDiv = document.createElement('div');
     var templateDiv = document.createElement('div');
     templateDiv.innerHTML = template;
-    templateDiv.style.display = "none"
+    // templateDiv.style.display = "none"
     document.body.appendChild(appDiv);
     document.body.appendChild(templateDiv);
+    var bindings = {};
+
+    console.log(templateDiv.querySelectorAll('[v-model]'));
+    Array.prototype.slice.call(templateDiv.querySelectorAll('[v-model]'))
+    .map(function (element) {
+        console.log(element);
+        var boundValue = element.getAttribute('v-model');
+
+        if (!bindings[boundValue]) {
+            bindings[boundValue] = {
+                boundValue: boundValue,
+                elements: []
+            }
+        }
+        bindings[boundValue].elements.push(element);
+        // appDiv.appendChild(element);
+        element.outerHTML = "{{#" + element.tagName.toLowerCase() + " " + boundValue + "}}"
+    });
+    console.log(bindings);
+
+    // Array.prototype.slice.call(templateDiv.getElementsByTagName('*'))
+    // .map((element) => {
+    //     // element.outerHTML = "{{#" + element.tagName.toLowerCase() + "}}"
+    //     console.log(element);
+    // })
 
     var index = 0;
-    var bindings = {};
-    var textNodes = template.match(/\{\{((?:.|\r?\n)+?)\}\}/g);
+    var end = template.length;
+    var templateHTML = templateDiv.innerHTML
+    var textNodes = templateHTML.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
+    console.log(textNodes);
     textNodes.forEach((node, i) => {
-        var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
-        var textNode = document.createTextNode(data[boundValue])
-        bindings[boundValue] = {
-            boundValue: boundValue,
-            elements: []
+        if (node.indexOf('{{#') > -1) {
+            var tag = node.substring(3, node.indexOf(" "))
+            var boundValue = node.substring(node.indexOf(" ") + 1, node.indexOf("}}"));
+            var element = document.createElement(tag)
+            element.value = data[boundValue]
+            element.setAttribute('value', data[boundValue]);
+        } else {
+            var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
+            var element = document.createTextNode(data[boundValue])
         }
-        bindings[boundValue].elements.push(textNode);
-        var text = document.createTextNode(template.substring(index, template.indexOf(node)))
-        index += node.length
+        if (!bindings[boundValue]) {
+            bindings[boundValue] = {
+                boundValue: boundValue,
+                elements: []
+            }
+        }
+        bindings[boundValue].elements.push(element);
+        var text = document.createTextNode(templateHTML.substring(index, templateHTML.indexOf(node)))
+        index += templateHTML.substring(index, templateHTML.indexOf(node)).length + node.length
         appDiv.appendChild(text)
-        appDiv.appendChild(textNode)
-        console.log(index, template.substring(index, template.indexOf(node)));
-        // console.log(textNode);
+        appDiv.appendChild(element)
+        console.log(element);
         // appDiv.innerHTML = appDiv.innerHTML.replace(node, textNode.textContent)
     });
 
@@ -58,22 +94,22 @@ export const init = ({ template, data = {}}) => {
     var ctrl = new controllers[name].factory();
     controllers[name].instances.push(ctrl);
 
-    console.log(templateDiv.querySelectorAll('[v-model]'));
-    Array.prototype.slice.call(templateDiv.querySelectorAll('[v-model]'))
-    .map(function (element) {
-        console.log(element);
-        var boundValue = element.getAttribute('v-model');
-
-        if (!bindings[boundValue]) {
-            bindings[boundValue] = {
-                boundValue: boundValue,
-                elements: []
-            }
-        }
-        bindings[boundValue].elements.push(element);
-        appDiv.appendChild(element);
-    });
-    console.log(bindings);
+    // console.log(templateDiv.querySelectorAll('[v-model]'));
+    // Array.prototype.slice.call(templateDiv.querySelectorAll('[v-model]'))
+    // .map(function (element) {
+    //     console.log(element);
+    //     var boundValue = element.getAttribute('v-model');
+    //
+    //     if (!bindings[boundValue]) {
+    //         bindings[boundValue] = {
+    //             boundValue: boundValue,
+    //             elements: []
+    //         }
+    //     }
+    //     bindings[boundValue].elements.push(element);
+    //     appDiv.appendChild(element);
+    // });
+    // console.log(bindings);
 
     // Update DOM element bound when controller property is set
         var proxy = new Proxy (ctrl, {
