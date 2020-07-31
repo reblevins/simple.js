@@ -7,8 +7,8 @@ init({
     data: {
         title: 'Simpel',
         hard: {
-            one: 'one',
-            two: 'two'
+            one: 'three',
+            two: 'four'
         },
         more: 'More',
         todos: [
