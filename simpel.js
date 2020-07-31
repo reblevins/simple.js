@@ -3,6 +3,10 @@ const path = require('path');
 const Handlebars = require("handlebars");
 
 export const init = ({ template, data = {}}) => {
+    // _.mapKeys(data, function(value, key) {
+    //     // return key + value;
+    //     console.log(key);
+    // })
     var appDiv = document.createElement('div');
     var templateDiv = document.createElement('div');
     appDiv.innerHTML = template;
@@ -49,7 +53,7 @@ export const init = ({ template, data = {}}) => {
         var listElement;
         if (Array.isArray(data[boundValue])) {
             data[boundValue].forEach(listElement => {
-                
+
             })
         }
     })
