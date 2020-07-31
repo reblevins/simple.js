@@ -46,9 +46,10 @@ export const init = ({ template, data = {}}) => {
     Array.prototype.slice.call(appDiv.querySelectorAll('[list]'))
     .map(element => {
         var boundValue = element.getAttribute('list');
+        var listElement;
         if (Array.isArray(data[boundValue])) {
             data[boundValue].forEach(listElement => {
-
+                
             })
         }
     })
