@@ -133,7 +133,7 @@ export class Simpel {
         Array.prototype.slice.call(element.querySelectorAll('[hide-if]'))
         .map(elementWithCondition => {
             var path = elementWithModel.getAttribute('hide-if');
-            
+
         })
     }
 
