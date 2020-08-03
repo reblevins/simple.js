@@ -1,19 +1,24 @@
-import {init} from '../simpel.js';
+import { Simpel } from '../simpel.js';
 
 var appTemplate = require('./App.html');
 
-init({
+new Simpel({
     template: appTemplate,
-    data: {
-        title: 'Simpel',
-        hard: {
-            one: 'three',
-            two: 'four'
-        },
-        more: 'More',
-        todos: [
-            'one',
-            'two'
-        ]
-    }
-});
+    api: 'https://jsonplaceholder.typicode.com'
+}).init()
+
+// init({
+//     template: appTemplate,
+//     data: {
+//         title: 'Simpel',
+//         hard: {
+//             one: 'three',
+//             two: 'four'
+//         },
+//         more: 'More',
+//         todos: [
+//             'one',
+//             'two'
+//         ]
+//     }
+// });
