@@ -2,7 +2,7 @@ import _ from 'lodash';
 const path = require('path');
 const Handlebars = require("handlebars");
 
-export const init = ({ template, data = {}}) => {
+export const init = ({ template, data = {}, methods = {}}) => {
     // _.mapKeys(data, function(value, key) {
     //     // return key + value;
     //     console.log(key);
@@ -28,6 +28,10 @@ export const init = ({ template, data = {}}) => {
         for (let key in data) {
             this[key] = data[key]
         }
+    }
+
+    for (let key in methods) {
+        window[key] = methods[key]
     }
 
     // Store controller constructor
@@ -116,6 +120,22 @@ export const init = ({ template, data = {}}) => {
     // and return proxy, not the ctrl!
     Object.assign(proxy, ctrl);
     return proxy;
+}
+
+const flattenObject = (obj, parent = null) => {
+  const flattened = {}
+
+  Object.keys(obj).forEach((key) => {
+    if (typeof obj[key] === 'object' && obj[key] !== null) {
+        console.log(key);
+      Object.assign(flattened, flattenObject(obj[key], key))
+    } else {
+        var newKey = (parent) ? parent + '.' + key : key
+      flattened[newKey] = obj[key]
+    }
+  })
+
+  return flattened
 }
 
 function addListeners(proxy, bindings, parent = null) {
