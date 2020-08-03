@@ -62,9 +62,16 @@ export class Simpel {
                             data.forEach((item, index) => {
                                 var listElement = document.createElement(subElement.tagName.toLowerCase())
                                 listElement.innerHTML = subElement.innerHTML
-                                this.replaceTextNodes(listElement, item, `tag[${index}]`)
+                                if (subElement.hasAttributes()) {
+                                    for (let attr in subElement.attributes) {
+                                        if (subElement.attributes[attr] && subElement.attributes[attr].name && subElement.attributes[attr].value) {
+                                            listElement.setAttribute(subElement.attributes[attr].name, subElement.attributes[attr].value)
+                                        }
+                                    }
+                                }
+                                this.replaceTextNodes(listElement, item, `${tag}[${index}]`)
                                 parentListElement.appendChild(listElement)
-                                this.getBindings(listElement, item, `tag[${index}]`)
+                                this.getBindings(listElement, item, `${tag}[${index}]`)
                             })
                         }
                         parentListElement.removeChild(subElement)
@@ -109,48 +116,92 @@ export class Simpel {
     getBindings(element, data, binding) {
         Array.prototype.slice.call(element.querySelectorAll('[model]'))
         .map((elementWithModel) => {
-            var path = elementWithModel.getAttribute('model');
+            let path = elementWithModel.getAttribute('model');
             if (elementWithModel.tagName.toLowerCase() == 'simpel-text') {
-                var textNode = document.createTextNode(elementWithModel.innerHTML)
-                var parentDiv = elementWithModel.parentNode
+                let textNode = document.createTextNode(elementWithModel.innerHTML)
+                let parentDiv = elementWithModel.parentNode
                 parentDiv.replaceChild(textNode, elementWithModel)
                 elementWithModel = textNode
+            } else if (elementWithModel.type == "checkbox") {
+                // elementWithModel.value = path
+                // console.log(path, data);
+                if (data[path])
+                    elementWithModel.setAttribute('checked', 'checked');
             } else {
                 elementWithModel.value = data[path]
                 elementWithModel.setAttribute('value', data[path]);
             }
             // console.log(path);
-            var boundValue = `${binding}.${path}`
+            let boundValue = `${binding}.${path}`
             if (!this.bindings[boundValue]) {
                 this.bindings[boundValue] = {
                     boundValue: boundValue,
                     elements: [],
-                    instances: []
+                    instances: [],
+                    hide: [],
+                    show: []
                 }
             }
             this.bindings[boundValue].elements.push(elementWithModel);
         });
-        Array.prototype.slice.call(element.querySelectorAll('[hide-if]'))
-        .map(elementWithCondition => {
-            var path = elementWithModel.getAttribute('hide-if');
-
-        })
+        if (element.hasAttribute('hide-if')) {
+            let path = element.getAttribute('hide-if')
+            let boundValue = `${binding}.${path}`
+            if (!this.bindings[boundValue]) {
+                this.bindings[boundValue] = {
+                    boundValue: boundValue,
+                    elements: [],
+                    instances: [],
+                    hide: [],
+                    show: []
+                }
+            }
+            let comment = document.createComment('')
+            this.bindings[boundValue].hide.push({
+                element: element,
+                display: window.getComputedStyle(element).getPropertyValue('display'),
+                parent: element.parentNode,
+                comment: comment
+            })
+            if (data[path]) {
+                // element.style.display = 'none';
+                element.parentNode.replaceChild(comment, element)
+                // element.parentNode.removeChild(element)
+            }
+        }
+        if (element.hasAttribute('show-if')) {
+            let path = element.getAttribute('show-if')
+            let boundValue = `${binding}.${path}`
+            if (!this.bindings[boundValue]) {
+                this.bindings[boundValue] = {
+                    boundValue: boundValue,
+                    elements: [],
+                    instances: [],
+                    hide: [],
+                    show: []
+                }
+            }
+            this.bindings[boundValue].show.push({
+                element: element,
+                display: window.getComputedStyle(element).getPropertyValue('display'),
+                parent: element.parentNode
+            })
+            console.log(window.getComputedStyle(element).getPropertyValue('display'));
+            if (!data[path]) {
+                element.style.display = 'none';
+                // element.parentNode.removeChild(element)
+            }
+        }
     }
 
     assignProxy(ctrl) {
         // Update DOM element bound when controller property is set
         let proxyHandler = {
             set: (target, prop, value, receiver) => {
-                // if (typeof ctrl[prop] === 'object') {
-                //     return new Proxy(ctrl[prop], proxyHandler)
-                // }
-                // var bind = _.get(this.bindings, prop);
                 var bind = this.bindings[prop]
                 if (bind) {
-                    bind.elements.forEach(function (element) {
-                        console.log(element.getAttribute('type'));
+                    bind.elements.forEach((element) => {
                         if (element.nodeType == 3) {
-                            console.log(receiver);
                             element.textContent = value
                         } else if (element.tagName.toLowerCase() == 'input') {
                             if (element.getAttribute('type') == "checkbox") {
@@ -162,6 +213,23 @@ export class Simpel {
                         } else {
                             element.innerHTML = value
 
+                        }
+                    });
+                    bind.hide.forEach((hidden, index) => {
+                        console.log('hide', hidden);
+                        if (typeof value === 'boolean') {
+                            console.log(hidden.element, hidden.comment);
+                            hidden.parent.replaceChild(hidden.element, hidden.comment)
+                            // hidden.element.style.display = (!value) ? hidden.display : 'none'
+                            // hidden.parent.removeChild(hidden.element)
+                        }
+                    });
+                    bind.show.forEach((show, index) => {
+                        console.log('show', show);
+                        if (typeof value === 'boolean') {
+                            console.log(show.display, value);
+                            show.element.style.display = (!value) ? 'none' : show.display
+                            // show.parent.prepend(show.element)
                         }
                     });
                 }
@@ -180,18 +248,23 @@ export class Simpel {
     }
 
     addListeners(proxy, bindings, parent = null) {
-        Object.keys(bindings).forEach(function(boundValue) {
+        Object.keys(bindings).forEach((boundValue) => {
             var bind = bindings[boundValue]
             if (!bindings[boundValue].boundValue) {
                 this.addListeners(proxy, bindings[boundValue], boundValue)
                 return
             }
-            bind.elements.forEach(function (element) {
-                element.addEventListener('input', function (event) {
+            bind.elements.forEach((element) => {
+                element.addEventListener('input', (event) => {
                     var value = (event.target.type == 'checkbox') ? event.target.checked : event.target.value
                     console.log(event);
                     proxy[bind.boundValue] = value;
                 })
+            })
+            bind.hide.forEach((element, index) => {
+                if (typeof prop === 'boolean') {
+                    // console.log(prop, value);
+                }
             })
         })
     }
