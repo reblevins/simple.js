@@ -28,6 +28,12 @@ export class Simpel {
         window.handleLinkClick = (event) => {
             console.log(event);
         }
+
+        window.onpopstate = this.locationChanged()
+    }
+
+    locationChanged() {
+        console.log(location);
     }
 
     getComponentsHTML() {
@@ -300,7 +306,7 @@ class SimpelLink extends HTMLElement {
         const textNode = document.createTextNode(this.innerText)
         shadow.appendChild(textNode)
 
-        this.addEventListener('click', window.handleLinkClick)
+        this.addEventListener('click', history.pushState(null, null, '/posts/1'))
     }
 }
 customElements.define('simpel-link', SimpelLink);
