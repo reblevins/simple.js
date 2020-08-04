@@ -12,6 +12,7 @@ export class Simpel {
         this.bindings = {}
         this.components = {}
         this.proxy = {}
+        this.data = null
         this.appDiv = document.createElement('div');
         this.appDiv.innerHTML = this.template;
         document.body.appendChild(this.appDiv);
@@ -19,6 +20,10 @@ export class Simpel {
         this.getComponentsHTML()
         // this.getTextNodes()
         // this.getBindings()
+
+        window.save = (event) => {
+            console.log(this.proxy['todos']);
+        }
     }
 
     getComponentsHTML() {
@@ -43,6 +48,8 @@ export class Simpel {
                 // element.outerHTML = this.componentsHTML[tag]
 
                 this.getComponentData(tag).then(data => {
+                    console.log(data);
+                    this.data = data
                     var controllerFunction = new Function(`return function ${tag}Controller() { this[tag] = data }`)
                     if (!this.components[tag]) {
                         this.components[tag] = {
@@ -53,10 +60,8 @@ export class Simpel {
                     }
                     this.components[tag].elements.push(newElement)
 
-                    console.log(newElement);
                     Array.prototype.slice.call(newElement.querySelectorAll('[list]')).map(subElement => {
                         var boundValue = subElement.getAttribute('list');
-                        console.log(subElement)
                         var parentListElement = subElement.parentNode
                         if (Array.isArray(data)) {
                             data.forEach((item, index) => {
@@ -77,7 +82,6 @@ export class Simpel {
                         parentListElement.removeChild(subElement)
                     })
 
-                    console.log(this.bindings);
                     var ctrl = new this.components[tag].factory();
                     this.components[tag].instances.push(ctrl);
                     // this.replaceTextNodes(element, data)
@@ -86,7 +90,6 @@ export class Simpel {
                 })
             })
         }
-        console.log(this.components);
     }
 
     getComponentData(tag) {
@@ -156,16 +159,16 @@ export class Simpel {
                     show: []
                 }
             }
-            let comment = document.createComment('')
+            let hidden = document.createElement('simple-hidden-text')
             this.bindings[boundValue].hide.push({
                 element: element,
                 display: window.getComputedStyle(element).getPropertyValue('display'),
                 parent: element.parentNode,
-                comment: comment
+                // comment: comment
             })
             if (data[path]) {
-                // element.style.display = 'none';
-                element.parentNode.replaceChild(comment, element)
+                element.style.display = 'none';
+                element.parentNode.replaceChild(hidden, element)
                 // element.parentNode.removeChild(element)
             }
         }
@@ -186,7 +189,6 @@ export class Simpel {
                 display: window.getComputedStyle(element).getPropertyValue('display'),
                 parent: element.parentNode
             })
-            console.log(window.getComputedStyle(element).getPropertyValue('display'));
             if (!data[path]) {
                 element.style.display = 'none';
                 // element.parentNode.removeChild(element)
@@ -197,6 +199,10 @@ export class Simpel {
     assignProxy(ctrl) {
         // Update DOM element bound when controller property is set
         let proxyHandler = {
+            get: (target, prop, receiver) => {
+                // console.log(receiver);
+                return this.data;
+            },
             set: (target, prop, value, receiver) => {
                 var bind = this.bindings[prop]
                 if (bind) {
@@ -216,19 +222,23 @@ export class Simpel {
                         }
                     });
                     bind.hide.forEach((hidden, index) => {
-                        console.log('hide', hidden);
                         if (typeof value === 'boolean') {
-                            console.log(hidden.element, hidden.comment);
-                            hidden.parent.replaceChild(hidden.element, hidden.comment)
-                            // hidden.element.style.display = (!value) ? hidden.display : 'none'
-                            // hidden.parent.removeChild(hidden.element)
+                            if (!value) {
+                                hidden.element.style.display = null
+                            } else {
+                                hidden.element.style.display = 'none'
+                            }
                         }
                     });
                     bind.show.forEach((show, index) => {
-                        console.log('show', show);
                         if (typeof value === 'boolean') {
                             console.log(show.display, value);
-                            show.element.style.display = (!value) ? 'none' : show.display
+                            if (value) {
+                                show.element.style.display = null
+                                console.log(show.element.style);
+                            } else {
+                                show.element.style.display = 'none'
+                            }
                             // show.parent.prepend(show.element)
                         }
                     });
@@ -257,7 +267,6 @@ export class Simpel {
             bind.elements.forEach((element) => {
                 element.addEventListener('input', (event) => {
                     var value = (event.target.type == 'checkbox') ? event.target.checked : event.target.value
-                    console.log(event);
                     proxy[bind.boundValue] = value;
                 })
             })
@@ -269,3 +278,17 @@ export class Simpel {
         })
     }
 }
+
+class SimpleHiddenText extends HTMLElement {
+    constructor() {
+        super()
+
+        // Create a shadow root
+        const shadow = this.attachShadow({mode: 'open'});
+        console.log(this.innerHTML);
+
+        // const textNode = document.createComment(' ')
+        // shadow.appendChild(textNode)
+    }
+}
+customElements.define('simple-hidden-text', SimpleHiddenText);
