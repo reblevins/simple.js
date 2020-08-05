@@ -1,5 +1,6 @@
 import _ from 'lodash';
 const path = require('path');
+const locationChangedEvent = new Event('locationChanged')
 
 export class Simpel {
     constructor(config) {
@@ -17,9 +18,17 @@ export class Simpel {
         this.appDiv.innerHTML = this.template;
         document.body.appendChild(this.appDiv);
 
+        console.log(this.router);
+        if (this.router) {
+            this.routerElement = document.createElement('div')
+            Array.prototype.slice.call(document.getElementsByTagName('routes')).map(element => {
+                console.log(element);
+                element.parentNode.replaceChild(this.routerElement, element)
+            })
+            this.locationChanged()
+        }
+
         this.getComponentsHTML()
-        // this.getTextNodes()
-        // this.getBindings()
 
         window.save = (event) => {
             console.log(this.proxy['todos']);
@@ -29,11 +38,24 @@ export class Simpel {
             console.log(event);
         }
 
-        window.onpopstate = this.locationChanged()
+        // const event = new Event('locationChanged');
+
+        document.addEventListener('locationChanged', (event) => { this.locationChanged() }, false)
     }
 
     locationChanged() {
-        console.log(location);
+        let routeElement = document.createElement('div')
+        if (this.router.route.length == 0) {
+            // We're at the root, load routes/Index.html
+            routeElement.innerHTML = this.router.routes['index']
+        } else if (this.router.route.length == 1) {
+            routeElement.innerHTML = this.router.routes[this.router.route[0]]['index']
+        } else {
+            console.log(this.router.routes[this.router.route[0]]['id']);
+            routeElement.innerHTML = this.router.routes[this.router.route[0]]['id']
+        }
+        console.log(routeElement);
+        this.routerElement.appendChild(routeElement)
     }
 
     getComponentsHTML() {
@@ -113,6 +135,15 @@ export class Simpel {
     }
 
     replaceTextNodes(element, data, binding) {
+        Array.prototype.slice.call(element.getElementsByTagName('simpel-link')).map(link => {
+            var route = link.getAttribute('route')
+            var textNodes = route.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
+            textNodes.forEach((node, i) => {
+                var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '')
+                route = route.replace(node, data[boundValue])
+            })
+            link.setAttribute('route', route);
+        })
         this.textNodes = element.innerHTML.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
         if (this.textNodes && this.textNodes.length > 0) {
             this.textNodes.forEach((node, i) => {
@@ -306,7 +337,13 @@ class SimpelLink extends HTMLElement {
         const textNode = document.createTextNode(this.innerText)
         shadow.appendChild(textNode)
 
-        this.addEventListener('click', history.pushState(null, null, '/posts/1'))
+        this.addEventListener('click', (event) => {
+            console.log('click');
+            var route = this.getAttribute('route').split('/')
+            console.log(route);
+            history.pushState({ model: route[1], id: route[2] }, 'Posts', this.getAttribute('route'))
+            document.dispatchEvent(locationChangedEvent)
+        })
     }
 }
 customElements.define('simpel-link', SimpelLink);
