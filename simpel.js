@@ -1,5 +1,6 @@
 import _ from 'lodash';
 const path = require('path');
+const locationChangedEvent = new Event('locationChanged')
 
 export class Simpel {
     constructor(config) {
@@ -17,13 +18,44 @@ export class Simpel {
         this.appDiv.innerHTML = this.template;
         document.body.appendChild(this.appDiv);
 
+        console.log(this.router);
+        if (this.router) {
+            this.routerElement = document.createElement('div')
+            Array.prototype.slice.call(document.getElementsByTagName('routes')).map(element => {
+                console.log(element);
+                element.parentNode.replaceChild(this.routerElement, element)
+            })
+            this.locationChanged()
+        }
+
         this.getComponentsHTML()
-        // this.getTextNodes()
-        // this.getBindings()
 
         window.save = (event) => {
             console.log(this.proxy['todos']);
         }
+
+        window.handleLinkClick = (event) => {
+            console.log(event);
+        }
+
+        // const event = new Event('locationChanged');
+
+        document.addEventListener('locationChanged', (event) => { this.locationChanged() }, false)
+    }
+
+    locationChanged() {
+        let routeElement = document.createElement('div')
+        if (this.router.route.length == 0) {
+            // We're at the root, load routes/Index.html
+            routeElement.innerHTML = this.router.routes['index']
+        } else if (this.router.route.length == 1) {
+            routeElement.innerHTML = this.router.routes[this.router.route[0]]['index']
+        } else {
+            console.log(this.router.routes[this.router.route[0]]['id']);
+            routeElement.innerHTML = this.router.routes[this.router.route[0]]['id']
+        }
+        console.log(routeElement);
+        this.routerElement.appendChild(routeElement)
     }
 
     getComponentsHTML() {
@@ -49,15 +81,14 @@ export class Simpel {
 
                 this.getComponentData(tag).then(data => {
                     console.log(data);
-                    this.data = data
                     var controllerFunction = new Function(`return function ${tag}Controller() { this[tag] = data }`)
                     if (!this.components[tag]) {
                         this.components[tag] = {
-                            factory: controllerFunction,
-                            instances: [],
+                            data: {},
                             elements: []
                         }
                     }
+                    this.components[tag].data[tag] = data
                     this.components[tag].elements.push(newElement)
 
                     Array.prototype.slice.call(newElement.querySelectorAll('[list]')).map(subElement => {
@@ -82,10 +113,7 @@ export class Simpel {
                         parentListElement.removeChild(subElement)
                     })
 
-                    var ctrl = new this.components[tag].factory();
-                    this.components[tag].instances.push(ctrl);
-                    // this.replaceTextNodes(element, data)
-                    this.assignProxy(ctrl)
+                    this.assignProxy(this.components[tag].data)
                     console.log(this.proxy);
                 })
             })
@@ -107,6 +135,15 @@ export class Simpel {
     }
 
     replaceTextNodes(element, data, binding) {
+        Array.prototype.slice.call(element.getElementsByTagName('simpel-link')).map(link => {
+            var route = link.getAttribute('route')
+            var textNodes = route.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
+            textNodes.forEach((node, i) => {
+                var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '')
+                route = route.replace(node, data[boundValue])
+            })
+            link.setAttribute('route', route);
+        })
         this.textNodes = element.innerHTML.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
         if (this.textNodes && this.textNodes.length > 0) {
             this.textNodes.forEach((node, i) => {
@@ -159,15 +196,15 @@ export class Simpel {
                     show: []
                 }
             }
-            let hidden = document.createElement('simple-hidden-text')
+            let hidden = document.createElement('simpel-hidden-element')
             this.bindings[boundValue].hide.push({
                 element: element,
                 display: window.getComputedStyle(element).getPropertyValue('display'),
                 parent: element.parentNode,
-                // comment: comment
+                replacementElement: hidden
             })
             if (data[path]) {
-                element.style.display = 'none';
+                // element.style.display = 'none';
                 element.parentNode.replaceChild(hidden, element)
                 // element.parentNode.removeChild(element)
             }
@@ -184,13 +221,16 @@ export class Simpel {
                     show: []
                 }
             }
+            let hidden = document.createElement('simpel-hidden-element')
             this.bindings[boundValue].show.push({
                 element: element,
                 display: window.getComputedStyle(element).getPropertyValue('display'),
-                parent: element.parentNode
+                parent: element.parentNode,
+                replacementElement: hidden
             })
             if (!data[path]) {
-                element.style.display = 'none';
+                // element.style.display = 'none';
+                element.parentNode.replaceChild(hidden, element)
                 // element.parentNode.removeChild(element)
             }
         }
@@ -199,11 +239,8 @@ export class Simpel {
     assignProxy(ctrl) {
         // Update DOM element bound when controller property is set
         let proxyHandler = {
-            get: (target, prop, receiver) => {
-                // console.log(receiver);
-                return this.data;
-            },
             set: (target, prop, value, receiver) => {
+                console.log(prop, value);
                 var bind = this.bindings[prop]
                 if (bind) {
                     bind.elements.forEach((element) => {
@@ -224,9 +261,11 @@ export class Simpel {
                     bind.hide.forEach((hidden, index) => {
                         if (typeof value === 'boolean') {
                             if (!value) {
-                                hidden.element.style.display = null
+                                hidden.replacementElement.parentNode.replaceChild(hidden.element, hidden.replacementElement)
+                                // hidden.element.style.display = null
                             } else {
-                                hidden.element.style.display = 'none'
+                                hidden.element.parentNode.replaceChild(hidden.replacementElement, hidden.element)
+                                // hidden.element.style.display = 'none'
                             }
                         }
                     });
@@ -234,17 +273,16 @@ export class Simpel {
                         if (typeof value === 'boolean') {
                             console.log(show.display, value);
                             if (value) {
-                                show.element.style.display = null
-                                console.log(show.element.style);
+                                show.replacementElement.parentNode.replaceChild(show.element, show.replacementElement)
+                                // show.element.style.display = null
                             } else {
-                                show.element.style.display = 'none'
+                                show.element.parentNode.replaceChild(show.replacementElement, show.element)
+                                // show.element.style.display = 'none'
                             }
-                            // show.parent.prepend(show.element)
                         }
                     });
                 }
-                // appDiv.childNodes[0].textContent = value
-                return Reflect.set(target, prop, value);
+                return _.set(target, prop, value)
             }
         }
         this.proxy = new Proxy(ctrl, proxyHandler);
@@ -279,16 +317,33 @@ export class Simpel {
     }
 }
 
-class SimpleHiddenText extends HTMLElement {
+class SimpelHiddenElement extends HTMLElement {
     constructor() {
         super()
 
         // Create a shadow root
         const shadow = this.attachShadow({mode: 'open'});
-        console.log(this.innerHTML);
-
-        // const textNode = document.createComment(' ')
-        // shadow.appendChild(textNode)
     }
 }
-customElements.define('simple-hidden-text', SimpleHiddenText);
+customElements.define('simpel-hidden-element', SimpelHiddenElement);
+
+class SimpelLink extends HTMLElement {
+    constructor() {
+        super()
+
+        // Create a shadow root
+        const shadow = this.attachShadow({mode: 'open'});
+
+        const textNode = document.createTextNode(this.innerText)
+        shadow.appendChild(textNode)
+
+        this.addEventListener('click', (event) => {
+            console.log('click');
+            var route = this.getAttribute('route').split('/')
+            console.log(route);
+            history.pushState({ model: route[1], id: route[2] }, 'Posts', this.getAttribute('route'))
+            document.dispatchEvent(locationChangedEvent)
+        })
+    }
+}
+customElements.define('simpel-link', SimpelLink);
