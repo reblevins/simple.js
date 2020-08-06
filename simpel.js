@@ -13,6 +13,7 @@ export class Simpel {
         this.bindings = {}
         this.components = {}
         this.proxy = {}
+        this.componentsHTML = {};
         this.data = null
         this.appDiv = document.createElement('div');
         this.appDiv.innerHTML = this.template;
@@ -20,56 +21,45 @@ export class Simpel {
 
         console.log(this.router);
         if (this.router) {
-            this.routerElement = document.createElement('div')
-            Array.prototype.slice.call(document.getElementsByTagName('routes')).map(element => {
-                console.log(element);
-                element.parentNode.replaceChild(this.routerElement, element)
+            this.router.locationChanged().then(() => {
+                this.getComponentsHTML()
             })
-            this.locationChanged()
-        }
+            window.handleLinkClick = (event) => {
+                console.log(event);
+            }
 
-        this.getComponentsHTML()
+            // const event = new Event('locationChanged');
+            window.addEventListener('popstate', (event) => {
+                this.router.locationChanged().then(() => {
+                    this.getComponentsHTML()
+                })
+            });
+
+            document.addEventListener('locationChanged', (event) => { this.router.locationChanged().then(() => {
+                this.getComponentsHTML()
+            })}, false)
+        } else {
+            this.getComponentsHTML()
+        }
 
         window.save = (event) => {
             console.log(this.proxy['todos']);
         }
-
-        window.handleLinkClick = (event) => {
-            console.log(event);
-        }
-
-        // const event = new Event('locationChanged');
-
-        document.addEventListener('locationChanged', (event) => { this.locationChanged() }, false)
-    }
-
-    locationChanged() {
-        let routeElement = document.createElement('div')
-        if (this.router.route.length == 0) {
-            // We're at the root, load routes/Index.html
-            routeElement.innerHTML = this.router.routes['index']
-        } else if (this.router.route.length == 1) {
-            routeElement.innerHTML = this.router.routes[this.router.route[0]]['index']
-        } else {
-            console.log(this.router.routes[this.router.route[0]]['id']);
-            routeElement.innerHTML = this.router.routes[this.router.route[0]]['id']
-        }
-        console.log(routeElement);
-        this.routerElement.appendChild(routeElement)
     }
 
     getComponentsHTML() {
-        // create a 'cache' where we can store our built up HTML from our fragments
-        this.componentsHTML = {};
+        if (Object.keys(this.componentsHTML).length == 0) {
+            // create a 'cache' where we can store our built up HTML from our fragments
 
-        // here, we're creating an anonymous function that loads up our HTML fragments
-        // then it adds them to our cache object
-        const importAll = requireContext => requireContext.keys().forEach(key => this.componentsHTML[_.kebabCase(key.replace('./', '').replace('.html', ''))] = requireContext(key));
+            // here, we're creating an anonymous function that loads up our HTML fragments
+            // then it adds them to our cache object
+            const importAll = requireContext => requireContext.keys().forEach(key => this.componentsHTML[_.kebabCase(key.replace('./', '').replace('.html', ''))] = requireContext(key));
 
-        // next, we call our importAll() function to load the files
-        // notice how this is where we call the require.context() function
-        // it uses our file path, whether to load subdirectories and what file type to get
-        importAll(require.context('./src/templates/', false, /.html$/));
+            // next, we call our importAll() function to load the files
+            // notice how this is where we call the require.context() function
+            // it uses our file path, whether to load subdirectories and what file type to get
+            importAll(require.context('./src/templates/', false, /.html$/));
+        }
 
         for (let tag in this.componentsHTML) {
             Array.prototype.slice.call(this.appDiv.getElementsByTagName(tag)).map(element => {
@@ -77,7 +67,6 @@ export class Simpel {
                 newElement.innerHTML = this.componentsHTML[tag]
                 var parent = element.parentNode
                 parent.replaceChild(newElement, element)
-                // element.outerHTML = this.componentsHTML[tag]
 
                 this.getComponentData(tag).then(data => {
                     console.log(data);
