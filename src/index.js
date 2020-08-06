@@ -1,5 +1,6 @@
 import { Simpel } from '../simpel.js';
 import { SimpelRouter } from '../simpel-router.js'
+import './style.scss';
 
 var App = require('./App.html');
 

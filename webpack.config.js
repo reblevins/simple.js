@@ -16,11 +16,13 @@ module.exports = {
     plugins: [
         new CleanWebpackPlugin({ cleanStaleWebpackAssets: false }),
         new HtmlWebpackPlugin({
-            title: 'Output Management',
+            title: 'Simpel.js',
+            template: 'public/index.html'
         }),
     ],
     module: {
         rules: [
+            { test: /\.html$/, loader: "html-loader" },
             {
                 test: /\.s[ac]ss$/i,
                 use: [
@@ -30,6 +32,16 @@ module.exports = {
                     'css-loader',
                     // Compiles Sass to CSS
                     'sass-loader',
+                    {
+                        loader: 'postcss-loader',
+                        options: {
+                            ident: 'postcss',
+                            plugins: [
+                                require('tailwindcss'),
+                                require('autoprefixer')
+                            ]
+                        }
+                    }
                 ]
             }
         ]
