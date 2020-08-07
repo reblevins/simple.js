@@ -4,6 +4,7 @@ const path = require('path');
 export class SimpelRouter {
     constructor() {
         this.routes = {}
+        this.historyState = {}
         const importAll = requireContext => requireContext.keys().forEach(key => {
             let routePath = key.replace('./', '').split('/')
             if (routePath.length == 1) {
@@ -33,6 +34,8 @@ export class SimpelRouter {
                     console.log(element);
                     element.parentNode.replaceChild(this.routerElement, element)
                 })
+            } else {
+                this.routerElement = document.querySelectorAll('.router')[0]
             }
             console.log(this.route);
             if (this.route.length == 0) {
@@ -41,11 +44,15 @@ export class SimpelRouter {
             } else if (this.route.length == 1) {
                 console.log('load posts index', this.routes[this.route[0]]['index']);
                 this.routerElement.innerHTML = this.routes[this.route[0]]['index']
+                console.log(this.routerElement.innerHTML);
             } else {
                 console.log('load posts id', this.routes[this.route[0]]['id']);
                 this.routerElement.innerHTML = this.routes[this.route[0]]['id']
             }
             // this.renderRoute()
+            this.historyState = (history.state) ? history.state : {
+                model: this.route[0]
+            }
             resolve()
         })
     }

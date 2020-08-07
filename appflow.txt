@@ -10,3 +10,6 @@ If Router enabled {
 
 - Load templates/components
 - Check for templates/components on page and replace with templates
+- Load component data:
+  - Is there a route? Use that to load the data
+  - Otherwise, proceed as usually getting the data based on the tag name.

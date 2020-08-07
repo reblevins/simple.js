@@ -68,17 +68,22 @@ export class Simpel {
                 var parent = element.parentNode
                 parent.replaceChild(newElement, element)
 
-                this.getComponentData(tag).then(data => {
-                    console.log(data);
-                    var controllerFunction = new Function(`return function ${tag}Controller() { this[tag] = data }`)
-                    if (!this.components[tag]) {
-                        this.components[tag] = {
+                let model = tag
+                let apiRoute = model
+                if (this.router) {
+                    model = apiRoute = this.router.historyState.model
+                    apiRoute += (this.router.historyState.id) ? '/' + this.router.historyState.id : ''
+                }
+                this.getComponentData(apiRoute).then(data => {
+                    var controllerFunction = new Function(`return function ${model}Controller() { this[model] = data }`)
+                    if (!this.components[model]) {
+                        this.components[model] = {
                             data: {},
                             elements: []
                         }
                     }
-                    this.components[tag].data[tag] = data
-                    this.components[tag].elements.push(newElement)
+                    this.components[model].data[model] = data
+                    this.components[model].elements.push(newElement)
 
                     Array.prototype.slice.call(newElement.querySelectorAll('[list]')).map(subElement => {
                         var boundValue = subElement.getAttribute('list');
@@ -94,16 +99,15 @@ export class Simpel {
                                         }
                                     }
                                 }
-                                this.replaceTextNodes(listElement, item, `${tag}[${index}]`)
+                                this.replaceTextNodes(listElement, item, `${model}[${index}]`)
                                 parentListElement.appendChild(listElement)
-                                this.getBindings(listElement, item, `${tag}[${index}]`)
+                                this.getBindings(listElement, item, `${model}[${index}]`)
                             })
                         }
                         parentListElement.removeChild(subElement)
                     })
-
-                    this.assignProxy(this.components[tag].data)
-                    console.log(this.proxy);
+                    this.replaceTextNodes(this.appDiv, data, `${model}`)
+                    this.assignProxy(this.components[model].data)
                 })
             })
         }
@@ -111,7 +115,8 @@ export class Simpel {
 
     getComponentData(tag) {
         return new Promise((resolve, reject) => {
-            fetch(this.api + `/${tag}?_page=1&_limit=10`).then(response => {
+            // fetch(this.api + `/${tag}?_page=1&_limit=10`).then(response => {
+            fetch(this.api + `/${tag}`).then(response => {
                 if (response.ok) {
                     return response.json()
                 } else {
@@ -127,10 +132,12 @@ export class Simpel {
         Array.prototype.slice.call(element.getElementsByTagName('simpel-link')).map(link => {
             var route = link.getAttribute('route')
             var textNodes = route.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
-            textNodes.forEach((node, i) => {
-                var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '')
-                route = route.replace(node, data[boundValue])
-            })
+            if (textNodes && textNodes.length > 0) {
+                textNodes.forEach((node, i) => {
+                    var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '')
+                    route = route.replace(node, data[boundValue])
+                })
+            }
             link.setAttribute('route', route);
         })
         this.textNodes = element.innerHTML.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
@@ -229,7 +236,6 @@ export class Simpel {
         // Update DOM element bound when controller property is set
         let proxyHandler = {
             set: (target, prop, value, receiver) => {
-                console.log(prop, value);
                 var bind = this.bindings[prop]
                 if (bind) {
                     bind.elements.forEach((element) => {
