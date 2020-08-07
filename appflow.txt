@@ -1,0 +1,12 @@
+Check if router is enabled
+
+If Router enabled {
+    - Check for routes directory: load routes
+    - No routes directory: load templates
+    - Enable listeners, fill route array
+    - Check for <routes></routes> and replace with routes div
+    - Hand off to main
+}
+
+- Load templates/components
+- Check for templates/components on page and replace with templates
