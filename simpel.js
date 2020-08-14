@@ -62,8 +62,9 @@ export class Simpel {
             importAll(require.context('./src/templates/', false, /.html$/));
         }
 
-        let parsedHTML = parse(this.componentsHTML['posts']);
+        let parsedHTML = parse(this.componentsHTML['posts'], { comment: true });
         console.log(parsedHTML);
+        this.appDiv.appendChild(parsedHTML.childNodes[0])
         for (let tag in this.componentsHTML) {
             Array.prototype.slice.call(this.appDiv.getElementsByTagName(tag)).map(element => {
                 var newElement = document.createElement('div')
