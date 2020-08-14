@@ -1,5 +1,6 @@
 import _ from 'lodash';
 const path = require('path');
+import { parse } from 'node-html-parser';
 const locationChangedEvent = new Event('locationChanged')
 
 export class Simpel {
@@ -61,6 +62,8 @@ export class Simpel {
             importAll(require.context('./src/templates/', false, /.html$/));
         }
 
+        let parsedHTML = parse(this.componentsHTML['posts']);
+        console.log(parsedHTML);
         for (let tag in this.componentsHTML) {
             Array.prototype.slice.call(this.appDiv.getElementsByTagName(tag)).map(element => {
                 var newElement = document.createElement('div')
