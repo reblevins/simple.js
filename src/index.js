@@ -6,6 +6,6 @@ var App = require('./App.html');
 
 new Simpel({
     template: App,
-    api: 'https://jsonplaceholder.typicode.com',
+    api: 'https://1hc6wchzzd.execute-api.us-east-2.amazonaws.com',
     router: new SimpelRouter()
 }).init()

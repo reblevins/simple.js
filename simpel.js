@@ -44,7 +44,12 @@ export class Simpel {
         }
 
         window.save = (event) => {
-            console.log(this.proxy['todos']);
+            let apiRoute = event.split('/').shift()
+            console.log(apiRoute);
+            fetch(this.api + `/${apiRoute[0]}`, {
+                method: 'POST',
+                body: JSON.stringify(this.proxy[apiRoute[0]])
+            }).then(obj => console.log(obj))
         }
     }
 
@@ -63,9 +68,10 @@ export class Simpel {
         }
 
         let parsedHTML = parse(this.componentsHTML['posts'], { comment: true });
-        console.log(parsedHTML);
-        this.appDiv.appendChild(parsedHTML.childNodes[0])
+        // console.log(parsedHTML);
+        // this.appDiv.appendChild(parsedHTML.childNodes[0])
         for (let tag in this.componentsHTML) {
+            console.log(tag);
             Array.prototype.slice.call(this.appDiv.getElementsByTagName(tag)).map(element => {
                 var newElement = document.createElement('div')
                 newElement.innerHTML = this.componentsHTML[tag]
@@ -78,6 +84,7 @@ export class Simpel {
                     model = apiRoute = this.router.historyState.model
                     apiRoute += (this.router.historyState.id) ? '/' + this.router.historyState.id : ''
                 }
+                console.log(apiRoute);
                 this.getComponentData(apiRoute).then(data => {
                     var controllerFunction = new Function(`return function ${model}Controller() { this[model] = data }`)
                     if (!this.components[model]) {
@@ -118,6 +125,7 @@ export class Simpel {
     }
 
     getComponentData(tag) {
+        console.log(tag);
         return new Promise((resolve, reject) => {
             // fetch(this.api + `/${tag}?_page=1&_limit=10`).then(response => {
             fetch(this.api + `/${tag}`).then(response => {

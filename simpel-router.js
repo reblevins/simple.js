@@ -42,9 +42,8 @@ export class SimpelRouter {
                 // We're at the root, load routes/Index.html
                 this.routerElement.innerHTML = this.routes['index']
             } else if (this.route.length == 1) {
-                console.log('load posts index', this.routes[this.route[0]]['index']);
+                console.log(`load ${[this.route[0]]} index`);
                 this.routerElement.innerHTML = this.routes[this.route[0]]['index']
-                console.log(this.routerElement.innerHTML);
             } else {
                 console.log('load posts id', this.routes[this.route[0]]['id']);
                 this.routerElement.innerHTML = this.routes[this.route[0]]['id']
