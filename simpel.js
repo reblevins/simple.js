@@ -99,8 +99,9 @@ export class Simpel {
                     Array.prototype.slice.call(newElement.querySelectorAll('[list]')).map(subElement => {
                         var boundValue = subElement.getAttribute('list');
                         var parentListElement = subElement.parentNode
-                        if (Array.isArray(data)) {
-                            data.forEach((item, index) => {
+                        console.log(data[boundValue]);
+                        if (Array.isArray(data[boundValue])) {
+                            data[boundValue].forEach((item, index) => {
                                 var listElement = document.createElement(subElement.tagName.toLowerCase())
                                 listElement.innerHTML = subElement.innerHTML
                                 if (subElement.hasAttributes()) {
@@ -119,6 +120,7 @@ export class Simpel {
                     })
                     this.replaceTextNodes(this.appDiv, data, `${model}`)
                     this.assignProxy(this.components[model].data)
+                    console.log(this.proxy['todos']);
                 })
             })
         }
@@ -191,6 +193,7 @@ export class Simpel {
                 }
             }
             this.bindings[boundValue].elements.push(elementWithModel);
+            console.log(elementWithModel);
         });
         if (element.hasAttribute('hide-if')) {
             let path = element.getAttribute('hide-if')
@@ -204,6 +207,7 @@ export class Simpel {
                     show: []
                 }
             }
+            console.log(!this.bindings[boundValue]);
             let hidden = document.createElement('simpel-hidden-element')
             this.bindings[boundValue].hide.push({
                 element: element,
@@ -293,7 +297,7 @@ export class Simpel {
             }
         }
         this.proxy = new Proxy(ctrl, proxyHandler);
-        // console.log(proxy);
+        console.log(this.proxy);
         // Listen for DOM element update to set the controller property
         this.addListeners(this.proxy, this.bindings)
 
@@ -310,6 +314,7 @@ export class Simpel {
                 return
             }
             bind.elements.forEach((element) => {
+                console.log(element);
                 element.addEventListener('input', (event) => {
                     var value = (event.target.type == 'checkbox') ? event.target.checked : event.target.value
                     proxy[bind.boundValue] = value;
