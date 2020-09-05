@@ -3,6 +3,32 @@ const path = require('path');
 import { parse } from 'node-html-parser';
 const locationChangedEvent = new Event('locationChanged')
 
+// const get = (object, path, value) => {
+// 	const pathArray = Array.isArray(path) ? path : path.split('.').filter(key => key)
+// 	const pathArrayFlat = pathArray.flatMap(part => typeof part === 'string' ? part.split('.') : part)
+//
+// 	return pathArrayFlat.reduce((obj, key) => obj && obj[key], object) || value
+// }
+
+const get = (obj, path, defaultValue) => path.split(".")
+.reduce((a, c) => (a && a[c] ? a[c] : (defaultValue || null)), obj)
+
+const set = (obj, path, value) => {
+    if (Object(obj) !== obj) return obj; // When obj is not an object
+    // If not yet an array, get the keys from the string-path
+    if (!Array.isArray(path)) path = path.toString().match(/[^.[\]]+/g) || [];
+    path.slice(0,-1).reduce((a, c, i) => // Iterate all of them except the last one
+         Object(a[c]) === a[c] // Does the key exist and is its value an object?
+             // Yes: then follow that path
+             ? a[c]
+             // No: create the key. Is the next key a potential array-index?
+             : a[c] = Math.abs(path[i+1])>>0 === +path[i+1]
+                   ? [] // Yes: assign a new array object
+                   : {}, // No: assign a new plain object
+         obj)[path[path.length-1]] = value; // Finally assign the value to the last key
+    return obj; // Return the top-level object to allow chaining
+};
+
 export class Simpel {
     constructor(config) {
         for (let key in config) {
@@ -20,7 +46,6 @@ export class Simpel {
         this.appDiv.innerHTML = this.template;
         document.body.appendChild(this.appDiv);
 
-        console.log(this.router);
         if (this.router) {
             this.router.locationChanged().then(() => {
                 this.getComponentsHTML()
@@ -71,7 +96,6 @@ export class Simpel {
         // console.log(parsedHTML);
         // this.appDiv.appendChild(parsedHTML.childNodes[0])
         for (let tag in this.componentsHTML) {
-            console.log(tag);
             Array.prototype.slice.call(this.appDiv.getElementsByTagName(tag)).map(element => {
                 var newElement = document.createElement('div')
                 newElement.innerHTML = this.componentsHTML[tag]
@@ -84,7 +108,6 @@ export class Simpel {
                     model = apiRoute = this.router.historyState.model
                     apiRoute += (this.router.historyState.id) ? '/' + this.router.historyState.id : ''
                 }
-                console.log(apiRoute);
                 this.getComponentData(apiRoute).then(data => {
                     var controllerFunction = new Function(`return function ${model}Controller() { this[model] = data }`)
                     if (!this.components[model]) {
@@ -93,15 +116,14 @@ export class Simpel {
                             elements: []
                         }
                     }
-                    this.components[model].data[model] = data
+                    this.components[model].data = data
                     this.components[model].elements.push(newElement)
-
                     Array.prototype.slice.call(newElement.querySelectorAll('[list]')).map(subElement => {
                         var boundValue = subElement.getAttribute('list');
                         var parentListElement = subElement.parentNode
-                        console.log(data[boundValue]);
-                        if (Array.isArray(data[boundValue])) {
-                            data[boundValue].forEach((item, index) => {
+						let values = get(this.components[model].data, boundValue, null)
+                        if (Array.isArray(values)) {
+                            values.forEach((item, index) => {
                                 var listElement = document.createElement(subElement.tagName.toLowerCase())
                                 listElement.innerHTML = subElement.innerHTML
                                 if (subElement.hasAttributes()) {
@@ -181,35 +203,32 @@ export class Simpel {
                 elementWithModel.value = data[path]
                 elementWithModel.setAttribute('value', data[path]);
             }
-            // console.log(path);
             let boundValue = `${binding}.${path}`
-            if (!this.bindings[boundValue]) {
-                this.bindings[boundValue] = {
+            if (!_.get(this.bindings, boundValue)) {
+                _.set(this.bindings, boundValue, {
                     boundValue: boundValue,
                     elements: [],
                     instances: [],
                     hide: [],
                     show: []
-                }
+                })
             }
-            this.bindings[boundValue].elements.push(elementWithModel);
-            console.log(elementWithModel);
+            _.get(this.bindings, boundValue).elements.push(elementWithModel);
         });
         if (element.hasAttribute('hide-if')) {
             let path = element.getAttribute('hide-if')
             let boundValue = `${binding}.${path}`
-            if (!this.bindings[boundValue]) {
-                this.bindings[boundValue] = {
+            if (!_.get(this.bindings, boundValue)) {
+                _.set(this.bindings, boundValue, {
                     boundValue: boundValue,
                     elements: [],
                     instances: [],
                     hide: [],
                     show: []
-                }
+                })
             }
-            console.log(!this.bindings[boundValue]);
             let hidden = document.createElement('simpel-hidden-element')
-            this.bindings[boundValue].hide.push({
+            _.get(this.bindings, boundValue).hide.push({
                 element: element,
                 display: window.getComputedStyle(element).getPropertyValue('display'),
                 parent: element.parentNode,
@@ -224,17 +243,17 @@ export class Simpel {
         if (element.hasAttribute('show-if')) {
             let path = element.getAttribute('show-if')
             let boundValue = `${binding}.${path}`
-            if (!this.bindings[boundValue]) {
-                this.bindings[boundValue] = {
+            if (!_.get(this.bindings, boundValue)) {
+                _.set(this.bindings, boundValue, {
                     boundValue: boundValue,
                     elements: [],
                     instances: [],
                     hide: [],
                     show: []
-                }
+                })
             }
             let hidden = document.createElement('simpel-hidden-element')
-            this.bindings[boundValue].show.push({
+            _.get(this.bindings, boundValue).show.push({
                 element: element,
                 display: window.getComputedStyle(element).getPropertyValue('display'),
                 parent: element.parentNode,
@@ -249,11 +268,14 @@ export class Simpel {
     }
 
     assignProxy(ctrl) {
+		console.log(ctrl);
         // Update DOM element bound when controller property is set
         let proxyHandler = {
             set: (target, prop, value, receiver) => {
+				console.log(prop);
                 var bind = this.bindings[prop]
                 if (bind) {
+					console.log(bind);
                     bind.elements.forEach((element) => {
                         if (element.nodeType == 3) {
                             element.textContent = value
@@ -297,7 +319,6 @@ export class Simpel {
             }
         }
         this.proxy = new Proxy(ctrl, proxyHandler);
-        console.log(this.proxy);
         // Listen for DOM element update to set the controller property
         this.addListeners(this.proxy, this.bindings)
 
@@ -313,8 +334,8 @@ export class Simpel {
                 this.addListeners(proxy, bindings[boundValue], boundValue)
                 return
             }
+			// console.log(bind);
             bind.elements.forEach((element) => {
-                console.log(element);
                 element.addEventListener('input', (event) => {
                     var value = (event.target.type == 'checkbox') ? event.target.checked : event.target.value
                     proxy[bind.boundValue] = value;
@@ -350,9 +371,7 @@ class SimpelLink extends HTMLElement {
         shadow.appendChild(textNode)
 
         this.addEventListener('click', (event) => {
-            console.log('click');
             var route = this.getAttribute('route').split('/')
-            console.log(route);
             history.pushState({ model: route[1], id: route[2] }, 'Posts', this.getAttribute('route'))
             document.dispatchEvent(locationChangedEvent)
         })

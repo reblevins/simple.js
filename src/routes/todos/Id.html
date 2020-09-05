@@ -1,2 +1,16 @@
 <h2>{{ description }}</h2>
-<todo></todo>
+<input type="text" model="description">
+
+<!-- <todo></todo> -->
+
+
+<ul>
+    <li list="list" hide-if="completed"><input type="checkbox" model="completed"> <input type="text" model="description"> {{ description }}</li>
+</ul>
+
+<h2>Completed</h2>
+<ul>
+    <li list="list" show-if="completed"><input type="checkbox" model="completed"> <input type="text" model="description"></li>
+</ul>
+
+<button type="button" name="button" onclick="save('/todos')">Save</button>
