@@ -38,7 +38,8 @@ export class Simpel {
 
     init() {
         this.bindings = {}
-        this.components = {}
+		this.components = {}
+        this.controllers = {}
         this.proxy = {}
         this.componentsHTML = {};
         this.data = null
@@ -92,9 +93,23 @@ export class Simpel {
             importAll(require.context('./src/templates/', false, /.html$/));
         }
 
-        let parsedHTML = parse(this.componentsHTML['posts'], { comment: true });
+        var parsedHTML = parse(this.router.routerElement.innerHTML, { comment: true });
         // console.log(parsedHTML);
         // this.appDiv.appendChild(parsedHTML.childNodes[0])
+		// console.log(parsedHTML);
+
+		var model;
+		if (this.router) {
+			model = this.router.historyState.model
+			model += (this.router.historyState.id) ? '/' + this.router.historyState.id : ''
+		}
+		this.getComponentData(model).then(async (data) => {
+			this.controllers[model] = {
+				data,
+				elements: await this.render(data, this.router.routerElement.childNodes)
+			}
+		})
+
         for (let tag in this.componentsHTML) {
             Array.prototype.slice.call(this.appDiv.getElementsByTagName(tag)).map(element => {
                 var newElement = document.createElement('div')
@@ -142,14 +157,35 @@ export class Simpel {
                     })
                     this.replaceTextNodes(this.appDiv, data, `${model}`)
                     this.assignProxy(this.components[model].data)
-                    console.log(this.proxy['todos']);
+                    // console.log(this.proxy['todos']);
                 })
             })
         }
     }
 
+	render(data, nodes, elements = []) {
+		console.log(nodes);
+		nodes.forEach(node => {
+			if (node.nodeType == 3) {
+				let dataNodes = node.innerHTML.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
+		        if (dataNodes && dataNodes.length > 0) {
+		            dataNodes.forEach((dataNode, i) => {
+		                var boundValue = dataNode.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
+		                node.innerHTML = node.innerHTML.replace(dataNode, `<simpel-text model="${boundValue}">${data[boundValue]}</simpel-text>`)
+		            });
+		        }
+				let textNode = document.createTextNode()
+			} else {
+
+			}
+			if (node.childNodes.length > 0) {
+				this.render(data, node.childNodes, elements)
+			}
+		})
+	}
+
     getComponentData(tag) {
-        console.log(tag);
+        // console.log(tag);
         return new Promise((resolve, reject) => {
             // fetch(this.api + `/${tag}?_page=1&_limit=10`).then(response => {
             fetch(this.api + `/${tag}`).then(response => {
@@ -268,14 +304,14 @@ export class Simpel {
     }
 
     assignProxy(ctrl) {
-		console.log(ctrl);
+		// console.log(ctrl);
         // Update DOM element bound when controller property is set
         let proxyHandler = {
             set: (target, prop, value, receiver) => {
-				console.log(prop);
+				// console.log(prop);
                 var bind = this.bindings[prop]
                 if (bind) {
-					console.log(bind);
+					// console.log(bind);
                     bind.elements.forEach((element) => {
                         if (element.nodeType == 3) {
                             element.textContent = value
@@ -304,7 +340,7 @@ export class Simpel {
                     });
                     bind.show.forEach((show, index) => {
                         if (typeof value === 'boolean') {
-                            console.log(show.display, value);
+                            // console.log(show.display, value);
                             if (value) {
                                 show.replacementElement.parentNode.replaceChild(show.element, show.replacementElement)
                                 // show.element.style.display = null

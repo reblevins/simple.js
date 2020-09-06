@@ -37,7 +37,6 @@ export class SimpelRouter {
             } else {
                 this.routerElement = document.querySelectorAll('.router')[0]
             }
-            console.log(this.route);
             if (this.route.length == 0) {
                 // We're at the root, load routes/Index.html
                 this.routerElement.innerHTML = this.routes['index']
