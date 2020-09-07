@@ -44,12 +44,13 @@ export class SimpelRouter {
                 // console.log(`load ${[this.route[0]]} index`);
                 this.routerElement.innerHTML = this.routes[this.route[0]]['index']
             } else {
-                // console.log('load posts id', this.routes[this.route[0]]['id']);
+                // console.log('load ${[this.route[0]]} id', this.routes[this.route[0]]['id']);
                 this.routerElement.innerHTML = this.routes[this.route[0]]['id']
             }
             // this.renderRoute()
             this.historyState = (history.state) ? history.state : {
-                model: this.route[0]
+                model: this.route[0],
+				id: this.route[1]
             }
             resolve()
         })
