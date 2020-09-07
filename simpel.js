@@ -106,7 +106,7 @@ export class Simpel {
 		this.getComponentData(model).then(async (data) => {
 			this.controllers[model] = {
 				data,
-				elements: await this.render(data, this.router.routerElement.childNodes)
+				elements: await this.render(data, this.router.routerElement)
 			}
 		})
 
@@ -163,25 +163,105 @@ export class Simpel {
         }
     }
 
-	render(data, nodes, elements = []) {
-		console.log(nodes);
-		nodes.forEach(node => {
-			if (node.nodeType == 3) {
-				let dataNodes = node.innerHTML.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
+	render(data, parentNode, binding = null) {
+		console.log(data);
+		parentNode.childNodes.forEach(node => {
+			if (node.nodeType === 3) {
+				// console.log(node);
+				var boundValue
+				let dataNodes = node.textContent.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
 		        if (dataNodes && dataNodes.length > 0) {
 		            dataNodes.forEach((dataNode, i) => {
-		                var boundValue = dataNode.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
-		                node.innerHTML = node.innerHTML.replace(dataNode, `<simpel-text model="${boundValue}">${data[boundValue]}</simpel-text>`)
+		                boundValue = dataNode.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
+						boundValue = (binding) ? `${binding}['${boundValue}']` : boundValue
+						if (!_.get(this.bindings, boundValue)) {
+							// console.log(boundValue);
+			                _.set(this.bindings, boundValue, {
+			                    elements: [],
+			                    instances: [],
+			                    hide: [],
+			                    show: []
+			                })
+			            }
+		                parentNode.innerHTML = parentNode.innerHTML.replace(dataNode, `<simpel-text model="${boundValue}">${data[boundValue]}</simpel-text>`)
 		            });
 		        }
-				let textNode = document.createTextNode()
-			} else {
-
+				// console.log(parentNode.querySelectorAll(`simpel-text[model="${boundValue}"]`));
+				Array.prototype.slice.call(parentNode.querySelectorAll(`simpel-text[model="${boundValue}"]`)).map(node => {
+					let textNode = document.createTextNode(data[boundValue])
+					_.get(this.bindings, boundValue).elements.push(textNode);
+					parentNode.replaceChild(textNode, node)
+					// console.log(textNode);
+				})
+			} else if (node.nodeType === 1) {
+				console.log(node.nodeType);
+				switch (node.tagName.toLowerCase()) {
+					case 'input':
+						if (node.getAttribute('model')) {
+							var boundValue = node.getAttribute('model')
+							if (!_.get(this.bindings, boundValue)) {
+				                _.set(this.bindings, boundValue, {
+				                    elements: [],
+				                    instances: [],
+				                    hide: [],
+				                    show: []
+				                })
+				            }
+							node.value = data[boundValue]
+							if (node.getAttribute('type') == 'checkbox' && data[boundValue])
+								node.setAttribute('checked', 'checked')
+							_.get(this.bindings, boundValue).elements.push(node);
+						}
+						break;
+					default:
+						if (node.getAttribute('list')) {
+							var boundValue = node.getAttribute('list')
+							if (!_.get(this.bindings, boundValue)) {
+				                _.set(this.bindings, boundValue, {
+				                    elements: [],
+				                    instances: [],
+				                    hide: [],
+				                    show: []
+				                })
+				            }
+							if (Array.isArray(data[boundValue])) {
+								data[boundValue].forEach((item, index) => {
+									// console.log(item);
+									let listElement = document.createElement(node.tagName.toLowerCase())
+									if (listElement.hasAttributes()) {
+	                                    for (let attr in listElement.attributes) {
+	                                        if (listElement.attributes[attr] && listElement.attributes[attr].name && listElement.attributes[attr].value) {
+	                                            listElement.setAttribute(listElement.attributes[attr].name, listElement.attributes[attr].value)
+	                                        }
+	                                    }
+	                                }
+									// if (node.childNodes.length > 0) {
+									// 	this.render(item, node, `${boundValue}[${index}]`)
+									// }
+									if (!_.get(this.bindings, boundValue[index])) {
+						                _.set(this.bindings, boundValue, {
+						                    elements: [],
+						                    instances: [],
+						                    hide: [],
+						                    show: []
+						                })
+						            }
+									_.get(this.bindings, boundValue).elements.push(node);
+									console.log(parentNode);
+									parentNode.appendChild(listElement)
+									// console.log(list);
+								})
+								parentNode.removeChild(node)
+							}
+						}
+						break;
+				}
 			}
 			if (node.childNodes.length > 0) {
-				this.render(data, node.childNodes, elements)
+				this.render(data, node)
 			}
 		})
+		// console.log(this.bindings);
 	}
 
     getComponentData(tag) {
