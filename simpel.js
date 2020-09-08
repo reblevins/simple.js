@@ -102,14 +102,14 @@ export class Simpel {
 		if (this.router) {
 			model = this.router.historyState.model
 			model += (this.router.historyState.id) ? '/' + this.router.historyState.id : ''
-			console.log(this.router);
+			// console.log(this.router);
 		}
 		this.getComponentData(model).then(async (data) => {
 			this.controllers[model] = {
 				data,
 				elements: await this.render(data, this.router.routerElement)
 			}
-			console.log(this.controllers);
+			// console.log(this.controllers);
 			this.assignProxy(model)
 		})
     }
@@ -124,21 +124,21 @@ export class Simpel {
 		                model = dataNode.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
 						let dataPoint = data[model]
 		                parentNode.innerHTML = parentNode.innerHTML.replace(dataNode, `<simpel-text model="${model}">${dataPoint}</simpel-text>`);
-						boundValue = (binding) ? `${binding}['${model}']` : model;
-						if (!_.get(elements, boundValue)) {
+						boundValue = (binding) ? `${binding}[${model}]` : model;
+						if (!elements[boundValue]) {
 							// console.log(boundValue);
-			                _.set(elements, boundValue, {
+			                elements[boundValue] = {
 			                    elements: [],
 			                    instances: [],
 			                    hide: [],
 			                    show: []
-			                });
+			                };
 			            }
 		            });
 		        }
 				Array.prototype.slice.call(parentNode.querySelectorAll(`simpel-text[model="${model}"]`)).map(simpelTextElement => {
 					let textNode = document.createTextNode(data[model])
-					_.get(elements, boundValue).elements.push(textNode);
+					elements[boundValue].elements.push(textNode);
 					parentNode.replaceChild(textNode, simpelTextElement)
 				})
 			}
@@ -156,29 +156,23 @@ export class Simpel {
 								node.value = model
 							} else {
 								node.value = dataPoint
-								console.log(dataPoint);
 							}
-							console.log(node);
 
-							var boundValue = (binding) ? `${binding}['${model}']` : model
-							if (!_.get(elements, boundValue)) {
-				                _.set(elements, boundValue, {
+							var boundValue = (binding) ? `${binding}[${model}]` : model
+							if (!elements[boundValue]) {
+				                elements[boundValue] = {
 				                    elements: [],
 				                    instances: [],
 				                    hide: [],
 				                    show: []
-				                })
+				                };
 				            }
-							_.get(elements, boundValue).elements.push(node);
-							console.log(node, _.get(elements, boundValue));
+							elements[boundValue].elements.push(node);
 						}
 						break;
 					default:
 						if (node.getAttribute('list')) {
 							var model = node.getAttribute('list')
-							if (!_.get(elements, model)) {
-				                _.set(elements, model);
-				            }
 							if (Array.isArray(data[model])) {
 								data[model].forEach((itemData, index) => {
 									// console.log(itemData);
@@ -191,16 +185,16 @@ export class Simpel {
 	                                    }
 	                                }
 									listElement.innerHTML = node.innerHTML
-									if (!_.get(this.bindings, model[index])) {
-						                _.set(this.bindings, model[index])
-						            }
+									// if (!_.get(this.bindings, model[index])) {
+						            //     _.set(this.bindings, model[index])
+						            // }
 									parentNode.appendChild(listElement)
-									console.log(listElement);
 									if (node.childNodes.length > 0) {
 										elements = this.render(itemData, listElement, elements, `${model}[${index}]`)
 									}
 								})
-								// parentNode.removeChild(node)
+								if (node.parentNode)
+									parentNode.removeChild(node);
 							}
 						}
 						break;
@@ -240,77 +234,40 @@ export class Simpel {
 				console.log(prop, value);
                 var bind = _.get(controller.elements, prop)
                 if (bind) {
-					if (Array.isArray(bind)) {
-						bind.forEach(subBind => {
-							subBind.elements.forEach((element) => {
-		                        if (element.nodeType == 3) {
-		                            element.textContent = value
-		                        } else if (element.tagName.toLowerCase() == 'input') {
-		                            if (element.getAttribute('type') == "checkbox") {
-		                                element.checked = value
-		                            } else {
-		                                element.value = value;
-		                                element.setAttribute('value', value);
-		                            }
-		                        } else {
-		                            element.innerHTML = value
+					console.log(bind);
+                    bind.elements.forEach((element) => {
+                        if (element.nodeType == 3) {
+                            element.textContent = value
+                        } else if (element.tagName.toLowerCase() == 'input') {
+                            if (element.getAttribute('type') == "checkbox") {
+                                element.checked = value
+                            } else {
+                                element.value = value;
+                                element.setAttribute('value', value);
+                            }
+                        } else {
+                            element.innerHTML = value
 
-		                        }
-		                    });
-		                    subBind.hide.forEach((hidden, index) => {
-		                        if (typeof value === 'boolean') {
-		                            if (!value) {
-		                                hidden.replacementElement.parentNode.replaceChild(hidden.element, hidden.replacementElement)
-		                            } else {
-		                                hidden.element.parentNode.replaceChild(hidden.replacementElement, hidden.element)
-		                            }
-		                        }
-		                    });
-		                    subBind.show.forEach((show, index) => {
-		                        if (typeof value === 'boolean') {
-		                            if (value) {
-		                                show.replacementElement.parentNode.replaceChild(show.element, show.replacementElement)
-		                            } else {
-		                                show.element.parentNode.replaceChild(show.replacementElement, show.element)
-		                            }
-		                        }
-		                    });
-						});
-					} else {
-	                    bind.elements.forEach((element) => {
-	                        if (element.nodeType == 3) {
-	                            element.textContent = value
-	                        } else if (element.tagName.toLowerCase() == 'input') {
-	                            if (element.getAttribute('type') == "checkbox") {
-	                                element.checked = value
-	                            } else {
-	                                element.value = value;
-	                                element.setAttribute('value', value);
-	                            }
-	                        } else {
-	                            element.innerHTML = value
-
-	                        }
-	                    });
-	                    bind.hide.forEach((hidden, index) => {
-	                        if (typeof value === 'boolean') {
-	                            if (!value) {
-	                                hidden.replacementElement.parentNode.replaceChild(hidden.element, hidden.replacementElement)
-	                            } else {
-	                                hidden.element.parentNode.replaceChild(hidden.replacementElement, hidden.element)
-	                            }
-	                        }
-	                    });
-	                    bind.show.forEach((show, index) => {
-	                        if (typeof value === 'boolean') {
-	                            if (value) {
-	                                show.replacementElement.parentNode.replaceChild(show.element, show.replacementElement)
-	                            } else {
-	                                show.element.parentNode.replaceChild(show.replacementElement, show.element)
-	                            }
-	                        }
-	                    });
-					}
+                        }
+                    });
+                    bind.hide.forEach((hidden, index) => {
+                        if (typeof value === 'boolean') {
+                            if (!value) {
+                                hidden.replacementElement.parentNode.replaceChild(hidden.element, hidden.replacementElement)
+                            } else {
+                                hidden.element.parentNode.replaceChild(hidden.replacementElement, hidden.element)
+                            }
+                        }
+                    });
+                    bind.show.forEach((show, index) => {
+                        if (typeof value === 'boolean') {
+                            if (value) {
+                                show.replacementElement.parentNode.replaceChild(show.element, show.replacementElement)
+                            } else {
+                                show.element.parentNode.replaceChild(show.replacementElement, show.element)
+                            }
+                        }
+                    });
                 }
                 return _.set(target, prop, value)
             }
@@ -337,7 +294,7 @@ export class Simpel {
 	                element.addEventListener('input', (event) => {
 						console.log(event);
 	                    var value = (event.target.type == 'checkbox') ? event.target.checked : event.target.value
-	                    _.set(proxy, boundValue, value);
+	                    proxy[boundValue] = value;
 	                })
 	            })
 	            bind.hide.forEach((element, index) => {
