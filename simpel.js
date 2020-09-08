@@ -3,32 +3,6 @@ const path = require('path');
 import { parse } from 'node-html-parser';
 const locationChangedEvent = new Event('locationChanged')
 
-// const get = (object, path, value) => {
-// 	const pathArray = Array.isArray(path) ? path : path.split('.').filter(key => key)
-// 	const pathArrayFlat = pathArray.flatMap(part => typeof part === 'string' ? part.split('.') : part)
-//
-// 	return pathArrayFlat.reduce((obj, key) => obj && obj[key], object) || value
-// }
-
-const get = (obj, path, defaultValue) => path.split(".")
-.reduce((a, c) => (a && a[c] ? a[c] : (defaultValue || null)), obj)
-
-const set = (obj, path, value) => {
-    if (Object(obj) !== obj) return obj; // When obj is not an object
-    // If not yet an array, get the keys from the string-path
-    if (!Array.isArray(path)) path = path.toString().match(/[^.[\]]+/g) || [];
-    path.slice(0,-1).reduce((a, c, i) => // Iterate all of them except the last one
-         Object(a[c]) === a[c] // Does the key exist and is its value an object?
-             // Yes: then follow that path
-             ? a[c]
-             // No: create the key. Is the next key a potential array-index?
-             : a[c] = Math.abs(path[i+1])>>0 === +path[i+1]
-                   ? [] // Yes: assign a new array object
-                   : {}, // No: assign a new plain object
-         obj)[path[path.length-1]] = value; // Finally assign the value to the last key
-    return obj; // Return the top-level object to allow chaining
-};
-
 export class Simpel {
     constructor(config) {
         for (let key in config) {
@@ -115,7 +89,9 @@ export class Simpel {
     }
 
 	render(data, parentNode, elements = {}, binding = null) {
+        console.log(parentNode.childNodes);
 		Array.prototype.slice.call(parentNode.childNodes).map(node => {
+            console.log(node);
 			if (node.nodeType === 3) {
 				var model, boundValue
 				let dataNodes = node.textContent.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
@@ -142,9 +118,29 @@ export class Simpel {
 					parentNode.replaceChild(textNode, simpelTextElement)
 				})
 			}
-		});
-		Array.prototype.slice.call(parentNode.getElementsByTagName('*')).map(node => {
-			if (node.nodeType === 1) {
+            if (node.nodeType === 1 && node.getAttribute('list')) {
+                var model = node.getAttribute('list')
+                if (Array.isArray(data[model])) {
+                    data[model].forEach((itemData, index) => {
+                        let listElement = document.createElement(node.tagName.toLowerCase())
+                        if (listElement.hasAttributes()) {
+                            for (let attr in listElement.attributes) {
+                                if (listElement.attributes[attr] && listElement.attributes[attr].name && listElement.attributes[attr].value) {
+                                    listElement.setAttribute(listElement.attributes[attr].name, listElement.attributes[attr].value)
+                                }
+                            }
+                        }
+                        listElement.innerHTML = node.innerHTML
+                        node.parentNode.appendChild(listElement)
+                        // console.log(parentNode);
+                        if (node.childNodes.length > 0) {
+                            elements = this.render(itemData, listElement, elements, `${model}[${index}]`)
+                        }
+                    })
+                    if (node.parentNode)
+                        node.parentNode.removeChild(node);
+                }
+            } else if (node.nodeType === 1) {
 				switch (node.tagName.toLowerCase()) {
 					case 'input':
 						if (node.getAttribute('model')) {
@@ -171,42 +167,72 @@ export class Simpel {
 						}
 						break;
 					default:
-						if (node.getAttribute('list')) {
-							var model = node.getAttribute('list')
-							if (Array.isArray(data[model])) {
-								data[model].forEach((itemData, index) => {
-									// console.log(itemData);
-									let listElement = document.createElement(node.tagName.toLowerCase())
-									if (listElement.hasAttributes()) {
-	                                    for (let attr in listElement.attributes) {
-	                                        if (listElement.attributes[attr] && listElement.attributes[attr].name && listElement.attributes[attr].value) {
-	                                            listElement.setAttribute(listElement.attributes[attr].name, listElement.attributes[attr].value)
-	                                        }
-	                                    }
-	                                }
-									listElement.innerHTML = node.innerHTML
-									// if (!_.get(this.bindings, model[index])) {
-						            //     _.set(this.bindings, model[index])
-						            // }
-									parentNode.appendChild(listElement)
-									if (node.childNodes.length > 0) {
-										elements = this.render(itemData, listElement, elements, `${model}[${index}]`)
-									}
-								})
-								if (node.parentNode)
-									parentNode.removeChild(node);
-							}
-						}
 						break;
 				}
-			}
-			if (node.childNodes.length > 0) {
-				elements = this.render(data, node, elements)
+                if (node.childNodes.length > 0) {
+                    elements = this.render(data, node, elements)
+                }
 			}
 		});
-		console.log(elements);
+		// Array.prototype.slice.call(parentNode.querySelectorAll('[list]')).map(node => {
+        //     var model = node.getAttribute('list')
+        //     if (Array.isArray(data[model])) {
+        //         data[model].forEach((itemData, index) => {
+        //             let listElement = document.createElement(node.tagName.toLowerCase())
+        //             if (listElement.hasAttributes()) {
+        //                 for (let attr in listElement.attributes) {
+        //                     if (listElement.attributes[attr] && listElement.attributes[attr].name && listElement.attributes[attr].value) {
+        //                         listElement.setAttribute(listElement.attributes[attr].name, listElement.attributes[attr].value)
+        //                     }
+        //                 }
+        //             }
+        //             listElement.innerHTML = node.innerHTML
+        //             node.parentNode.appendChild(listElement)
+        //             // console.log(parentNode);
+        //             if (node.childNodes.length > 0) {
+        //                 elements = this.render(itemData, listElement, elements, `${model}[${index}]`)
+        //             }
+        //         })
+        //         if (node.parentNode)
+        //             node.parentNode.removeChild(node);
+        //     }
+        // });
+        // Array.prototype.slice.call(parentNode.getElementsByTagName('*')).map(node => {
+		// 	if (node.nodeType === 1 && !node.getAttribute('list')) {
+		// 		switch (node.tagName.toLowerCase()) {
+		// 			case 'input':
+		// 				if (node.getAttribute('model')) {
+		// 					var model = node.getAttribute('model');
+        //
+		// 					let dataPoint = data[model]
+		// 					if (node.getAttribute('type') == 'checkbox' && dataPoint === true) {
+		// 						node.setAttribute('checked', 'checked')
+		// 						node.value = model
+		// 					} else {
+		// 						node.value = dataPoint
+		// 					}
+        //
+		// 					var boundValue = (binding) ? `${binding}[${model}]` : model
+		// 					if (!elements[boundValue]) {
+		// 		                elements[boundValue] = {
+		// 		                    elements: [],
+		// 		                    instances: [],
+		// 		                    hide: [],
+		// 		                    show: []
+		// 		                };
+		// 		            }
+		// 					elements[boundValue].elements.push(node);
+		// 				}
+		// 				break;
+		// 			default:
+		// 				break;
+		// 		}
+		// 	}
+        //     if (node.childNodes.length > 0) {
+        //         elements = this.render(data, node, elements)
+        //     }
+		// });
 		return elements
-		// console.log(this.bindings);
 	}
 
     getComponentData(tag) {
@@ -290,9 +316,7 @@ export class Simpel {
 				})
 			} else {
 	            bind.elements.forEach((element) => {
-					console.log(element);
 	                element.addEventListener('input', (event) => {
-						console.log(event);
 	                    var value = (event.target.type == 'checkbox') ? event.target.checked : event.target.value
 	                    proxy[boundValue] = value;
 	                })
