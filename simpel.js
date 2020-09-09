@@ -90,8 +90,10 @@ export class Simpel {
 
 	render(data, parentNode, elements = {}, binding = null) {
         console.log(parentNode.childNodes);
-		Array.prototype.slice.call(parentNode.childNodes).map(node => {
-            console.log(node);
+        // childNodes.forEach(node => {
+        for (let i = 0; i < parentNode.childNodes.length; i++) {
+            let node = parentNode.childNodes.item(i)
+            console.log(data, parentNode.childNodes, node);
 			if (node.nodeType === 3) {
 				var model, boundValue
 				let dataNodes = node.textContent.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
@@ -99,6 +101,7 @@ export class Simpel {
 		            dataNodes.forEach((dataNode, i) => {
 		                model = dataNode.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
 						let dataPoint = data[model]
+                        console.log(data, model, dataPoint);
 		                parentNode.innerHTML = parentNode.innerHTML.replace(dataNode, `<simpel-text model="${model}">${dataPoint}</simpel-text>`);
 						boundValue = (binding) ? `${binding}[${model}]` : model;
 						if (!elements[boundValue]) {
@@ -122,6 +125,7 @@ export class Simpel {
                 var model = node.getAttribute('list')
                 if (Array.isArray(data[model])) {
                     data[model].forEach((itemData, index) => {
+                        console.log(itemData);
                         let listElement = document.createElement(node.tagName.toLowerCase())
                         if (listElement.hasAttributes()) {
                             for (let attr in listElement.attributes) {
@@ -130,15 +134,22 @@ export class Simpel {
                                 }
                             }
                         }
+                        listElement.setAttribute('model', `${model}[${index}]`)
+                        // listElement.removeAttribute('list')
                         listElement.innerHTML = node.innerHTML
                         node.parentNode.appendChild(listElement)
-                        // console.log(parentNode);
-                        if (node.childNodes.length > 0) {
-                            elements = this.render(itemData, listElement, elements, `${model}[${index}]`)
-                        }
+                        // console.log(listElement.childNodes);
+                        // if (node.childNodes.length > 0) {
+                            // console.log(itemData);
+                            // elements = this.render(itemData, listElement, elements, `${model}[${index}]`)
+                        // }
                     })
-                    if (node.parentNode)
-                        node.parentNode.removeChild(node);
+                }
+                if (node.parentNode)
+                    node.parentNode.removeChild(node);
+                for (let i = 0; i < parentNode.length; i++) {
+                    console.log(data[model][i]);
+                    elements = this.render(data[model][i], parentNode.childNodes.item(i), elements, `${model}[${i}]`)
                 }
             } else if (node.nodeType === 1) {
 				switch (node.tagName.toLowerCase()) {
@@ -169,11 +180,13 @@ export class Simpel {
 					default:
 						break;
 				}
-                if (node.childNodes.length > 0) {
-                    elements = this.render(data, node, elements)
-                }
 			}
-		});
+            if (node.childNodes.length > 0) {
+                console.log(data, node, elements);
+                elements = this.render(data, node, elements)
+            }
+        };
+		// });
 		// Array.prototype.slice.call(parentNode.querySelectorAll('[list]')).map(node => {
         //     var model = node.getAttribute('list')
         //     if (Array.isArray(data[model])) {
