@@ -89,19 +89,20 @@ export class Simpel {
     }
 
 	render(data, parentNode, elements = {}, binding = null) {
-        console.log(parentNode.childNodes);
+        // console.log(parentNode.childNodes);
         // childNodes.forEach(node => {
         for (let i = 0; i < parentNode.childNodes.length; i++) {
             let node = parentNode.childNodes.item(i)
-            console.log(data, parentNode.childNodes, node);
+            // console.log(data, parentNode.childNodes, node);
 			if (node.nodeType === 3) {
-				elements = this.getTextNodes(data, parentNode, node, elements)
+                if (!node.parentNode.hasAttribute('list'))
+    				elements = this.getTextNodes(data, parentNode, node, elements)
 			}
             if (node.nodeType === 1 && node.getAttribute('list')) {
                 var model = node.getAttribute('list')
                 if (Array.isArray(data[model])) {
                     data[model].forEach((itemData, index) => {
-                        console.log(itemData);
+                        // console.log(itemData);
                         let listElement = document.createElement(node.tagName.toLowerCase())
                         if (listElement.hasAttributes()) {
                             for (let attr in listElement.attributes) {
@@ -110,18 +111,22 @@ export class Simpel {
                                 }
                             }
                         }
-                        listElement.setAttribute('model', `${model}[${index}]`)
-                        // listElement.removeAttribute('list')
+                        let binding = `${model}[${index}]`
+                        listElement.setAttribute('model', binding)
+                        if (listElement.hasAttribute('hide-if')) {
+                            let boundValue = listElement.hasAttribute('hide-if')
+                            listElement.setAttribute('hide-if', `${binding}.${boundValue}`)
+                        }
+                        if (listElement.hasAttribute('show-if')) {
+                            let boundValue = listElement.hasAttribute('show-if')
+                            listElement.setAttribute('show-if', `${binding}.${boundValue}`)
+                        }
                         listElement.innerHTML = node.innerHTML
-						elements = this.getTextNodes(data, listElement, listElement, elements, `${model}[${index}]`)
-						console.log(`${model}[${index}]`);
-						elements = this.getInputs(data, listElement, elements, `${model}[${index}]`)
+                        // console.log(binding);
+						elements = this.getTextNodes(data, listElement, listElement, elements, binding)
+						elements = this.getInputs(data, listElement, elements, binding)
                         node.parentNode.appendChild(listElement)
-                        // console.log(listElement.childNodes);
-                        // if (node.childNodes.length > 0) {
-                            // console.log(itemData);
-                            // elements = this.render(itemData, listElement, elements, `${model}[${index}]`)
-                        // }
+                        elements = this.showHide(node, data, elements)
                     })
                 }
                 if (node.parentNode)
@@ -130,15 +135,17 @@ export class Simpel {
 				switch (node.tagName.toLowerCase()) {
 					case 'input':
 						if (node.getAttribute('model')) {
-							elements = this.getInputs(data, parentNode, node, elements, binding)
+							elements = this.getInputs(data, parentNode, elements, binding)
+                            elements = this.showHide(node, data, elements)
 						}
 						break;
 					default:
 						break;
 				}
 			}
+
             if (node.childNodes.length > 0) {
-                console.log(data, node, elements);
+                // console.log(data, node, elements);
                 elements = this.render(data, node, elements)
             }
         };
@@ -146,17 +153,16 @@ export class Simpel {
 	}
 
 	getTextNodes(data, parentNode = null, node, elements, binding = null) {
-		// console.log(data, parentNode, node);
+		// console.log(parentNode, node, binding);
 		var model, boundValue
 		let dataNodes = node.textContent.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
 		if (dataNodes && dataNodes.length > 0) {
 			dataNodes.forEach((dataNode, i) => {
 				model = dataNode.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
-				let dataPoint = data[model]
-				parentNode.innerHTML = parentNode.innerHTML.replace(dataNode, `<simpel-text model="${model}">${dataPoint}</simpel-text>`);
-				boundValue = (binding) ? `${binding}['${model}']` : model;
+				boundValue = (binding) ? `${binding}.${model}` : model;
+                let dataPoint = _.get(data, boundValue)
+                parentNode.innerHTML = parentNode.innerHTML.replace(dataNode, `<simpel-text model="${boundValue}">${dataPoint}</simpel-text>`);
 				if (!elements[boundValue]) {
-					console.log(node, boundValue, binding);
 					elements[`${boundValue}`] = {
 						elements: [],
 						instances: [],
@@ -166,8 +172,8 @@ export class Simpel {
 				}
 			});
 		}
-		Array.prototype.slice.call(parentNode.querySelectorAll(`simpel-text[model="${model}"]`)).map(simpelTextElement => {
-			let textNode = document.createTextNode(data[model])
+		Array.prototype.slice.call(parentNode.querySelectorAll(`simpel-text[model="${boundValue}"]`)).map(simpelTextElement => {
+			let textNode = document.createTextNode(_.get(data, boundValue))
 			elements[boundValue].elements.push(textNode);
 			parentNode.replaceChild(textNode, simpelTextElement)
 		})
@@ -180,10 +186,9 @@ export class Simpel {
 			if (node.nodeType === 1 && node.tagName.toLowerCase() == 'input' && node.getAttribute('model')) {
 				var model = node.getAttribute('model');
 				var boundValue = (binding) ? `${binding}.${model}` : model
-				console.log(parentNode, node, model, binding);
 
 				let dataPoint = _.get(data, boundValue)
-				console.log(dataPoint);
+				// console.log(dataPoint);
 				if (node.getAttribute('type') == 'checkbox' && dataPoint === true) {
 					node.setAttribute('checked', 'checked')
 					node.value = model
@@ -205,6 +210,56 @@ export class Simpel {
 		}
 		return elements;
 	}
+
+    showHide(node, data, elements) {
+        if (node.hasAttribute('hide-if')) {
+            let boundValue = node.getAttribute('hide-if')
+            if (!_.get(elements, boundValue)) {
+                _.set(elements, boundValue, {
+                    elements: [],
+                    instances: [],
+                    hide: [],
+                    show: []
+                })
+            }
+            let hidden = document.createElement('simpel-hidden-element')
+            _.get(elements, boundValue).hide.push({
+                element: node,
+                // display: window.getComputedStyle(node).getPropertyValue('display'),
+                parent: node.parentNode,
+                replacementElement: hidden
+            })
+            if (_.get(data, boundValue)) {
+                // element.style.display = 'none';
+                node.parentNode.replaceChild(hidden, node)
+                // element.parentNode.removeChild(element)
+            }
+        }
+        if (node.hasAttribute('show-if')) {
+            let boundValue = node.getAttribute('show-if')
+            if (!_.get(elements, boundValue)) {
+                _.set(elements, boundValue, {
+                    elements: [],
+                    instances: [],
+                    hide: [],
+                    show: []
+                })
+            }
+            let hidden = document.createElement('simpel-hidden-element')
+            _.get(elements, boundValue).show.push({
+                element: node,
+                // display: window.getComputedStyle(node).getPropertyValue('display'),
+                parent: node.parentNode,
+                replacementElement: hidden
+            })
+            if (!_.get(data, boundValue)) {
+                // element.style.display = 'none';
+                node.parentNode.replaceChild(hidden, node)
+                // element.parentNode.removeChild(element)
+            }
+        }
+        return elements
+    }
 
     getComponentData(tag) {
         // console.log(tag);
