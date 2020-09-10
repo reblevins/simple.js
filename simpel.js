@@ -95,31 +95,7 @@ export class Simpel {
             let node = parentNode.childNodes.item(i)
             console.log(data, parentNode.childNodes, node);
 			if (node.nodeType === 3) {
-				var model, boundValue
-				let dataNodes = node.textContent.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
-		        if (dataNodes && dataNodes.length > 0) {
-		            dataNodes.forEach((dataNode, i) => {
-		                model = dataNode.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
-						let dataPoint = data[model]
-                        console.log(data, model, dataPoint);
-		                parentNode.innerHTML = parentNode.innerHTML.replace(dataNode, `<simpel-text model="${model}">${dataPoint}</simpel-text>`);
-						boundValue = (binding) ? `${binding}[${model}]` : model;
-						if (!elements[boundValue]) {
-							// console.log(boundValue);
-			                elements[boundValue] = {
-			                    elements: [],
-			                    instances: [],
-			                    hide: [],
-			                    show: []
-			                };
-			            }
-		            });
-		        }
-				Array.prototype.slice.call(parentNode.querySelectorAll(`simpel-text[model="${model}"]`)).map(simpelTextElement => {
-					let textNode = document.createTextNode(data[model])
-					elements[boundValue].elements.push(textNode);
-					parentNode.replaceChild(textNode, simpelTextElement)
-				})
+				elements = this.getTextNodes(data, parentNode, node, elements)
 			}
             if (node.nodeType === 1 && node.getAttribute('list')) {
                 var model = node.getAttribute('list')
@@ -137,6 +113,9 @@ export class Simpel {
                         listElement.setAttribute('model', `${model}[${index}]`)
                         // listElement.removeAttribute('list')
                         listElement.innerHTML = node.innerHTML
+						elements = this.getTextNodes(data, listElement, listElement, elements, `${model}[${index}]`)
+						console.log(`${model}[${index}]`);
+						elements = this.getInputs(data, listElement, elements, `${model}[${index}]`)
                         node.parentNode.appendChild(listElement)
                         // console.log(listElement.childNodes);
                         // if (node.childNodes.length > 0) {
@@ -147,34 +126,11 @@ export class Simpel {
                 }
                 if (node.parentNode)
                     node.parentNode.removeChild(node);
-                for (let i = 0; i < parentNode.length; i++) {
-                    console.log(data[model][i]);
-                    elements = this.render(data[model][i], parentNode.childNodes.item(i), elements, `${model}[${i}]`)
-                }
             } else if (node.nodeType === 1) {
 				switch (node.tagName.toLowerCase()) {
 					case 'input':
 						if (node.getAttribute('model')) {
-							var model = node.getAttribute('model');
-
-							let dataPoint = data[model]
-							if (node.getAttribute('type') == 'checkbox' && dataPoint === true) {
-								node.setAttribute('checked', 'checked')
-								node.value = model
-							} else {
-								node.value = dataPoint
-							}
-
-							var boundValue = (binding) ? `${binding}[${model}]` : model
-							if (!elements[boundValue]) {
-				                elements[boundValue] = {
-				                    elements: [],
-				                    instances: [],
-				                    hide: [],
-				                    show: []
-				                };
-				            }
-							elements[boundValue].elements.push(node);
+							elements = this.getInputs(data, parentNode, node, elements, binding)
 						}
 						break;
 					default:
@@ -186,66 +142,68 @@ export class Simpel {
                 elements = this.render(data, node, elements)
             }
         };
-		// });
-		// Array.prototype.slice.call(parentNode.querySelectorAll('[list]')).map(node => {
-        //     var model = node.getAttribute('list')
-        //     if (Array.isArray(data[model])) {
-        //         data[model].forEach((itemData, index) => {
-        //             let listElement = document.createElement(node.tagName.toLowerCase())
-        //             if (listElement.hasAttributes()) {
-        //                 for (let attr in listElement.attributes) {
-        //                     if (listElement.attributes[attr] && listElement.attributes[attr].name && listElement.attributes[attr].value) {
-        //                         listElement.setAttribute(listElement.attributes[attr].name, listElement.attributes[attr].value)
-        //                     }
-        //                 }
-        //             }
-        //             listElement.innerHTML = node.innerHTML
-        //             node.parentNode.appendChild(listElement)
-        //             // console.log(parentNode);
-        //             if (node.childNodes.length > 0) {
-        //                 elements = this.render(itemData, listElement, elements, `${model}[${index}]`)
-        //             }
-        //         })
-        //         if (node.parentNode)
-        //             node.parentNode.removeChild(node);
-        //     }
-        // });
-        // Array.prototype.slice.call(parentNode.getElementsByTagName('*')).map(node => {
-		// 	if (node.nodeType === 1 && !node.getAttribute('list')) {
-		// 		switch (node.tagName.toLowerCase()) {
-		// 			case 'input':
-		// 				if (node.getAttribute('model')) {
-		// 					var model = node.getAttribute('model');
-        //
-		// 					let dataPoint = data[model]
-		// 					if (node.getAttribute('type') == 'checkbox' && dataPoint === true) {
-		// 						node.setAttribute('checked', 'checked')
-		// 						node.value = model
-		// 					} else {
-		// 						node.value = dataPoint
-		// 					}
-        //
-		// 					var boundValue = (binding) ? `${binding}[${model}]` : model
-		// 					if (!elements[boundValue]) {
-		// 		                elements[boundValue] = {
-		// 		                    elements: [],
-		// 		                    instances: [],
-		// 		                    hide: [],
-		// 		                    show: []
-		// 		                };
-		// 		            }
-		// 					elements[boundValue].elements.push(node);
-		// 				}
-		// 				break;
-		// 			default:
-		// 				break;
-		// 		}
-		// 	}
-        //     if (node.childNodes.length > 0) {
-        //         elements = this.render(data, node, elements)
-        //     }
-		// });
 		return elements
+	}
+
+	getTextNodes(data, parentNode = null, node, elements, binding = null) {
+		// console.log(data, parentNode, node);
+		var model, boundValue
+		let dataNodes = node.textContent.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
+		if (dataNodes && dataNodes.length > 0) {
+			dataNodes.forEach((dataNode, i) => {
+				model = dataNode.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
+				let dataPoint = data[model]
+				parentNode.innerHTML = parentNode.innerHTML.replace(dataNode, `<simpel-text model="${model}">${dataPoint}</simpel-text>`);
+				boundValue = (binding) ? `${binding}['${model}']` : model;
+				if (!elements[boundValue]) {
+					console.log(node, boundValue, binding);
+					elements[`${boundValue}`] = {
+						elements: [],
+						instances: [],
+						hide: [],
+						show: []
+					};
+				}
+			});
+		}
+		Array.prototype.slice.call(parentNode.querySelectorAll(`simpel-text[model="${model}"]`)).map(simpelTextElement => {
+			let textNode = document.createTextNode(data[model])
+			elements[boundValue].elements.push(textNode);
+			parentNode.replaceChild(textNode, simpelTextElement)
+		})
+		return elements;
+	}
+
+	getInputs(data, parentNode, elements, binding = null) {
+		for (let i = 0; i < parentNode.childNodes.length; i++) {
+			let node = parentNode.childNodes.item(i);
+			if (node.nodeType === 1 && node.tagName.toLowerCase() == 'input' && node.getAttribute('model')) {
+				var model = node.getAttribute('model');
+				var boundValue = (binding) ? `${binding}.${model}` : model
+				console.log(parentNode, node, model, binding);
+
+				let dataPoint = _.get(data, boundValue)
+				console.log(dataPoint);
+				if (node.getAttribute('type') == 'checkbox' && dataPoint === true) {
+					node.setAttribute('checked', 'checked')
+					node.value = model
+				} else {
+					node.value = dataPoint
+				}
+				node.setAttribute('model', boundValue)
+
+				if (!elements[boundValue]) {
+					elements[`${boundValue}`] = {
+						elements: [],
+						instances: [],
+						hide: [],
+						show: []
+					};
+				}
+				elements[boundValue].elements.push(node);
+			}
+		}
+		return elements;
 	}
 
     getComponentData(tag) {
