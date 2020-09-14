@@ -76,7 +76,7 @@ export class Simpel {
 		if (this.router) {
 			model = this.router.historyState.model
 			model += (this.router.historyState.id) ? '/' + this.router.historyState.id : ''
-			// console.log(this.router);
+			console.log(this.router.routerElement);
 		}
 		if (model !== 'undefined') {
             this.getComponentData(model).then(async (data) => {
@@ -84,7 +84,6 @@ export class Simpel {
     				data,
     				elements: await this.render(data, this.router.routerElement)
     			}
-    			console.log(this.controllers);
     			this.assignProxy(model)
     		})
             // .catch(err => {
@@ -94,7 +93,6 @@ export class Simpel {
     }
 
 	render(data, parentNode, elements = {}, binding = null) {
-        // console.log(parentNode.childNodes);
         // childNodes.forEach(node => {
         for (let i = 0; i < parentNode.childNodes.length; i++) {
             let node = parentNode.childNodes.item(i)
@@ -103,14 +101,14 @@ export class Simpel {
                 if (!node.parentNode.hasAttribute('list'))
     				elements = this.getTextNodes(data, parentNode, node, elements)
 			}
-            // if (node.getAttribute) console.log(node, node.hasAttribute('list'));
+
             if (node.nodeType === 1 && node.hasAttribute('list')) {
                 var model = node.getAttribute('list')
                 if (model === this.router.historyState.model) {
                     data[model] = data
                 }
                 if (Array.isArray(data[model])) {
-                    data[model].forEach((itemData, index) => {
+                    data[model].forEach(async (itemData, index) => {
                         let listElement = document.createElement(node.tagName.toLowerCase())
                         if (listElement.hasAttributes()) {
                             for (let attr in listElement.attributes) {
@@ -130,8 +128,8 @@ export class Simpel {
                             listElement.setAttribute('show-if', `${binding}.${boundValue}`)
                         }
                         listElement.innerHTML = node.innerHTML
-                        console.log(listElement);
-                        console.log(parentNode);
+                        // console.log(listElement);
+                        // console.log(parentNode);
 						elements = this.getTextNodes(data, listElement, listElement, elements, binding)
 						elements = this.getInputs(data, listElement, elements, binding)
                         node.parentNode.appendChild(listElement)
@@ -161,28 +159,32 @@ export class Simpel {
 		return elements
 	}
 
-	getTextNodes(data, parentNode = null, node, elements, binding = null) {
-		console.log(data);
+	async getTextNodes(data, parentNode = null, node, elements, binding = null) {
 		var model, boundValue
-        Array.prototype.slice.call(parentNode.getElementsByTagName('simpel-link')).map(link => {
-            var route = link.getAttribute('route')
-            var textNodes = route.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
-            if (textNodes && textNodes.length > 0) {
-                textNodes.forEach((node, i) => {
-                    var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '')
-                    boundValue = (binding) ? `${binding}.${boundValue}` : boundValue;
-                    console.log(binding, boundValue);
-                    route = route.replace(node, _.get(data, boundValue))
-                })
-            }
-            link.setAttribute('route', route);
+        await Array.prototype.slice.call(parentNode.getElementsByTagName('simpel-link')).map(link => {
+			// First check if the parent node is a list
+			if (!link.parentNode.hasAttribute('list')) {
+				console.log(link, parentNode, binding);
+	            var route = link.getAttribute('route')
+				// console.log(data, route, textNodes);
+	            var textNodes = route.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
+	            if (textNodes && textNodes.length > 0) {
+	                textNodes.forEach((node, i) => {
+	                    var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '')
+						console.log(binding, boundValue);
+	                    boundValue = (binding) ? `${binding}.${boundValue}` : boundValue;
+	                    route = route.replace(node, _.get(data, boundValue))
+	                })
+	            }
+	            link.setAttribute('route', route);
+			}
         })
 		let dataNodes = node.textContent.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
 		if (dataNodes && dataNodes.length > 0) {
 			dataNodes.forEach((dataNode, i) => {
 				model = dataNode.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
 				boundValue = (binding) ? `${binding}.${model}` : model;
-                console.log(binding, boundValue);
+                // console.log(binding, boundValue);
                 let dataPoint = _.get(data, boundValue)
                 parentNode.innerHTML = parentNode.innerHTML.replace(dataNode, `<simpel-text model="${boundValue}">${dataPoint}</simpel-text>`);
 				if (!elements[boundValue]) {
@@ -198,7 +200,7 @@ export class Simpel {
 		Array.prototype.slice.call(parentNode.querySelectorAll(`simpel-text[model="${boundValue}"]`)).map(simpelTextElement => {
 			let textNode = document.createTextNode(_.get(data, boundValue))
 			elements[boundValue].elements.push(textNode);
-            console.log(data, boundValue, simpelTextElement);
+            // console.log(data, boundValue, simpelTextElement);
 			simpelTextElement.parentNode.replaceChild(textNode, simpelTextElement)
 		})
 		return elements;
@@ -398,10 +400,10 @@ class SimpelLink extends HTMLElement {
         super()
 
         // Create a shadow root
-        const shadow = this.attachShadow({mode: 'open'});
+        // const shadow = this.attachShadow({mode: 'open'});
 
-        const textNode = document.createTextNode(this.innerText)
-        shadow.appendChild(textNode)
+        // const textNode = document.createTextNode(this.innerText)
+        // shadow.appendChild(textNode)
 
         this.addEventListener('click', (event) => {
             var route = this.getAttribute('route').split('/')
