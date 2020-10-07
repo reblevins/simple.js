@@ -110,6 +110,7 @@ export class Simpel {
             let promises = []
             for (let i = 0; i < childNodes.length; i++) {
                 promises[i] = new Promise(async (resolve, reject) => {
+
                     // let node = childNodes.item(i).cloneNode(true)
                     let node = childNodes.item(i)
         			if (node.nodeType === 3 && !parentNode.hasAttribute('list')) {
@@ -118,7 +119,7 @@ export class Simpel {
         				switch (node.tagName.toLowerCase()) {
         					case 'input':
         						if (node.getAttribute('model')) {
-        							await this.getInputs({ model, parentNode, binding })
+        							await this.getInputs({ model, parentNode, node, binding })
         						}
         						break;
         					default:
@@ -187,7 +188,7 @@ export class Simpel {
         })
     }
 
-	async getTextNodes(options) {
+	getTextNodes(options) {
         return new Promise(async (resolve, reject) => {
             var { model, parentNode = null, node, binding = null } = options
             var { data = null } = this.controllers[model]
@@ -242,53 +243,91 @@ export class Simpel {
         return;
 	}
 
-	getInputs(options) {
+    getInputs(options) {
         return new Promise(async (resolve, reject) => {
             var { model, parentNode = null, node, binding = null } = options
             var { data = null } = this.controllers[model]
-            var childNodes = parentNode.querySelectorAll('input')
-            // console.log(childNodes);
-            let promises = []
-            for (let i = 0; i < childNodes.length; i++) {
-                promises[i] = new Promise((resolve, reject) => {
-                    let element = childNodes.item(i)
-                    // let element = key
-    				var localModel = element.getAttribute('model');
-                    if (localModel.indexOf('[') == -1) {
-        				var boundValue = (binding) ? `${binding}.${localModel}` : localModel
-                        // console.log(element.parentNode, boundValue);
 
-        				let dataPoint = _.get(data, boundValue)
-        				// console.log(dataPoint);
-        				if (element.getAttribute('type') == 'checkbox' && dataPoint === true) {
-        					element.setAttribute('checked', 'checked')
-        					element.value = localModel
-        				} else {
-        					element.value = dataPoint
-        				}
-        				element.setAttribute('model', boundValue)
+            var localModel = node.getAttribute('model');
+            if (localModel.indexOf('[') == -1) {
+                var boundValue = (binding) ? `${binding}.${localModel}` : localModel
+                // console.log(node.parentNode, boundValue);
 
-        				if (!this.controllers[model].elements[boundValue]) {
-        					this.controllers[model].elements[`${boundValue}`] = {
-        						elements: [],
-        						instances: [],
-        						hide: [],
-        						show: []
-        					};
-        				}
-        				this.controllers[model].elements[boundValue].elements.push(element);
-                    }
-                    resolve()
-                })
-    		}
-            Promise.all(promises).then(() => {
-                resolve()
-            })
+                let dataPoint = _.get(data, boundValue)
+                if (parentNode.tagName == 'LI') console.log(node);
+
+                // console.log(dataPoint);
+                if (node.getAttribute('type') == 'checkbox' && dataPoint === true) {
+                    node.setAttribute('checked', 'checked')
+                    node.value = localModel
+                } else {
+                    node.value = dataPoint
+                }
+                node.setAttribute('model', boundValue)
+
+                if (!this.controllers[model].elements[boundValue]) {
+                    this.controllers[model].elements[`${boundValue}`] = {
+                        elements: [],
+                        instances: [],
+                        hide: [],
+                        show: []
+                    };
+                }
+                this.controllers[model].elements[boundValue].elements.push(node);
+            }
+            resolve()
         }).catch(err => {
             console.log(err);
             reject(err)
         })
 	}
+	// getInputs(options) {
+    //     return new Promise(async (resolve, reject) => {
+    //         var { model, parentNode = null, node, binding = null } = options
+    //         var { data = null } = this.controllers[model]
+    //         var childNodes = parentNode.querySelectorAll('input')
+    //         // console.log(childNodes);
+    //         let promises = []
+    //         for (let i = 0; i < childNodes.length; i++) {
+    //             promises[i] = new Promise((resolve, reject) => {
+    //                 let element = childNodes.item(i)
+    //                 // let element = key
+    // 				var localModel = element.getAttribute('model');
+    //                 if (localModel.indexOf('[') == -1) {
+    //     				var boundValue = (binding) ? `${binding}.${localModel}` : localModel
+    //                     // console.log(element.parentNode, boundValue);
+    //
+    //     				let dataPoint = _.get(data, boundValue)
+    //     				// console.log(dataPoint);
+    //     				if (element.getAttribute('type') == 'checkbox' && dataPoint === true) {
+    //     					element.setAttribute('checked', 'checked')
+    //     					element.value = localModel
+    //     				} else {
+    //     					element.value = dataPoint
+    //     				}
+    //     				element.setAttribute('model', boundValue)
+    //
+    //     				if (!this.controllers[model].elements[boundValue]) {
+    //     					this.controllers[model].elements[`${boundValue}`] = {
+    //     						elements: [],
+    //     						instances: [],
+    //     						hide: [],
+    //     						show: []
+    //     					};
+    //     				}
+    //     				this.controllers[model].elements[boundValue].elements.push(element);
+    //                 }
+    //                 resolve()
+    //             })
+    // 		}
+    //         Promise.all(promises).then(() => {
+    //             resolve()
+    //         })
+    //     }).catch(err => {
+    //         console.log(err);
+    //         reject(err)
+    //     })
+	// }
 
     showHide(options) {
         var { model, node } = options
