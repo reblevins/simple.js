@@ -1,0 +1,15 @@
+{
+    "dev": {
+        "awscloudformation": {
+            "AuthRoleName": "amplify-simpeljs-dev-174701-authRole",
+            "UnauthRoleArn": "arn:aws:iam::414705225856:role/amplify-simpeljs-dev-174701-unauthRole",
+            "AuthRoleArn": "arn:aws:iam::414705225856:role/amplify-simpeljs-dev-174701-authRole",
+            "Region": "us-east-2",
+            "DeploymentBucketName": "amplify-simpeljs-dev-174701-deployment",
+            "UnauthRoleName": "amplify-simpeljs-dev-174701-unauthRole",
+            "StackName": "amplify-simpeljs-dev-174701",
+            "StackId": "arn:aws:cloudformation:us-east-2:414705225856:stack/amplify-simpeljs-dev-174701/681ac020-08f7-11eb-915a-0a9c3780d6ee",
+            "AmplifyAppId": "d2yn2cxlyu40hq"
+        }
+    }
+}
