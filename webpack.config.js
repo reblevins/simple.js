@@ -22,7 +22,9 @@ module.exports = {
     ],
     module: {
         rules: [
-            { test: /\.html$/, loader: "html-loader" },
+            {
+                test: /\.html$/, loader: "html-loader", exclude: /index\.html$/
+            },
             {
                 test: /\.s[ac]ss$/i,
                 use: [

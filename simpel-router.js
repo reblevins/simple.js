@@ -20,7 +20,7 @@ export class SimpelRouter {
     }
 
     upateRoute() {
-        console.log('upateRoute');
+        // console.log('upateRoute');
         this.route = window.location.pathname.split('/').filter(part => part != '')
     }
 
@@ -31,7 +31,7 @@ export class SimpelRouter {
                 this.routerElement = document.createElement('div')
                 this.routerElement.classList.add('router')
                 Array.prototype.slice.call(document.getElementsByTagName('routes')).map(element => {
-                    console.log(element);
+                    // console.log(element);
                     element.parentNode.replaceChild(this.routerElement, element)
                 })
             } else {
