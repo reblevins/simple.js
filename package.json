@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "private": true,
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "webpack --watch",
@@ -29,6 +30,7 @@
     "webpack-dev-server": "^3.11.0"
   },
   "dependencies": {
+    "aws-amplify": "^3.3.3",
     "handlebars": "^4.7.6",
     "handlebars-loader": "^1.7.1",
     "lodash": "^4.17.19",

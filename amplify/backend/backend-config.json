@@ -5,41 +5,23 @@
 			"providerPlugin": "awscloudformation"
 		}
 	},
-	"function": {
-		"simplePostsLambda": {
-			"build": true,
-			"providerPlugin": "awscloudformation",
-			"service": "Lambda",
-			"dependsOn": [
-				{
-					"category": "storage",
-					"resourceName": "simpleCMSDb",
-					"attributes": [
-						"Name",
-						"Arn"
-					],
-					"attributeEnvMap": {
-						"Name": "TABLE_NAME",
-						"Arn": "TABLE_ARN"
-					}
-				}
-			]
-		}
-	},
+	"function": {},
 	"api": {
-		"simpelAPI": {
-			"service": "API Gateway",
+		"simpeljs": {
+			"service": "AppSync",
 			"providerPlugin": "awscloudformation",
-			"dependsOn": [
-				{
-					"category": "function",
-					"resourceName": "simplePostsLambda",
-					"attributes": [
-						"Name",
-						"Arn"
-					]
+			"output": {
+				"authConfig": {
+					"defaultAuthentication": {
+						"authenticationType": "API_KEY",
+						"apiKeyConfig": {
+							"apiKeyExpirationDays": 365,
+							"description": "simpeljsAPIKey"
+						}
+					},
+					"additionalAuthenticationProviders": []
 				}
-			]
+			}
 		}
 	}
 }

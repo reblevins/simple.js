@@ -3,6 +3,8 @@ const path = require('path');
 import { parse } from 'node-html-parser';
 const locationChangedEvent = new Event('locationChanged')
 
+import { createBlog, updateBlog, deleteBlog, createPost, updatePost, deletePost, createComment, updateComment, deleteComment} from './src/graphql/mutations';
+
 export class Simpel {
     constructor(config) {
         for (let key in config) {
