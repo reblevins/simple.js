@@ -13,6 +13,7 @@ export const createBlog = /* GraphQL */ `
         items {
           id
           title
+          content
           blogID
           createdAt
           updatedAt
@@ -36,6 +37,7 @@ export const updateBlog = /* GraphQL */ `
         items {
           id
           title
+          content
           blogID
           createdAt
           updatedAt
@@ -59,6 +61,7 @@ export const deleteBlog = /* GraphQL */ `
         items {
           id
           title
+          content
           blogID
           createdAt
           updatedAt
@@ -78,6 +81,7 @@ export const createPost = /* GraphQL */ `
     createPost(input: $input, condition: $condition) {
       id
       title
+      content
       blogID
       blog {
         id
@@ -111,6 +115,7 @@ export const updatePost = /* GraphQL */ `
     updatePost(input: $input, condition: $condition) {
       id
       title
+      content
       blogID
       blog {
         id
@@ -144,6 +149,7 @@ export const deletePost = /* GraphQL */ `
     deletePost(input: $input, condition: $condition) {
       id
       title
+      content
       blogID
       blog {
         id
@@ -180,6 +186,7 @@ export const createComment = /* GraphQL */ `
       post {
         id
         title
+        content
         blogID
         blog {
           id
@@ -210,6 +217,7 @@ export const updateComment = /* GraphQL */ `
       post {
         id
         title
+        content
         blogID
         blog {
           id
@@ -240,6 +248,7 @@ export const deleteComment = /* GraphQL */ `
       post {
         id
         title
+        content
         blogID
         blog {
           id

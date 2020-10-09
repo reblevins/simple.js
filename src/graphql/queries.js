@@ -10,6 +10,7 @@ export const getBlog = /* GraphQL */ `
         items {
           id
           title
+          content
           blogID
           createdAt
           updatedAt
@@ -46,6 +47,7 @@ export const getPost = /* GraphQL */ `
     getPost(id: $id) {
       id
       title
+      content
       blogID
       blog {
         id
@@ -81,6 +83,7 @@ export const listPosts = /* GraphQL */ `
       items {
         id
         title
+        content
         blogID
         blog {
           id
@@ -106,6 +109,7 @@ export const getComment = /* GraphQL */ `
       post {
         id
         title
+        content
         blogID
         blog {
           id
@@ -138,6 +142,7 @@ export const listComments = /* GraphQL */ `
         post {
           id
           title
+          content
           blogID
           createdAt
           updatedAt

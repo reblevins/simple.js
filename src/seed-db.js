@@ -1,13 +1,10 @@
-import { Simpel } from '../simpel.js';
-import { SimpelRouter } from '../simpel-router.js'
-import './style.scss';
-import { Amplify, API } from 'aws-amplify';
-// const { Amplify, API } = pkg;
+import pkg from 'aws-amplify';
+const { Amplify, API } = pkg;
 
-import { createBlog, updateBlog, deleteBlog, createPost, updatePost, deletePost, createComment, updateComment, deleteComment } from './graphql/mutations.js';
-// const { createBlog, updateBlog, deleteBlog, createPost, updatePost, deletePost, createComment, updateComment, deleteComment } = mutations
-import { listBlogs, listPosts } from './graphql/queries.js';
-// const { listBlogs } = queries;
+import mutations from './graphql/mutations.js';
+const { createBlog, updateBlog, deleteBlog, createPost, updatePost, deletePost, createComment, updateComment, deleteComment } = mutations
+import queries from './graphql/queries.js';
+const { listBlogs } = queries;
 // import creds from './aws-exports.js';
 // const { apiCreds } = creds;
 import aws_exports from './aws-exports.js';
@@ -80,23 +77,4 @@ async function seedBlogPosts() {
     });
 }
 
-async function getAllPosts() {
-    try {
-        const blogs = await API.graphql({
-            query: listPosts
-        })
-        console.dir(blogs.data.listPosts.items);
-    } catch(err) {
-        console.log(err);
-    }
-}
-
-getAllPosts();
-
-var App = require('./App.html');
-
-new Simpel({
-    template: App,
-    api: 'https://1hc6wchzzd.execute-api.us-east-2.amazonaws.com',
-    router: new SimpelRouter()
-}).init()
+seedBlogPosts();
