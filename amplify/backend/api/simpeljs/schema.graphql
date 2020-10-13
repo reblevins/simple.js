@@ -4,10 +4,11 @@ type Blog @model {
   posts: [Post] @connection(keyName: "byBlog", fields: ["id"])
 }
 
-type Post @model @key(name: "byBlog", fields: ["blogID"]) {
+type Post @model @key(name: "byBlog", fields: ["blogID"]) @key(name: "byLinkName", fields: ["linkName"], queryField: "getPostByLinkName") {
   id: ID!
   title: String!
   content: String
+  linkName: String!
   blogID: ID!
   blog: Blog @connection(fields: ["blogID"])
   comments: [Comment] @connection(keyName: "byPost", fields: ["id"])
@@ -19,3 +20,5 @@ type Comment @model @key(name: "byPost", fields: ["postID", "content"]) {
   post: Post @connection(fields: ["postID"])
   content: String!
 }
+
+type Query

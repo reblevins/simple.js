@@ -11,6 +11,7 @@ export const onCreateBlog = /* GraphQL */ `
           id
           title
           content
+          linkName
           blogID
           createdAt
           updatedAt
@@ -32,6 +33,7 @@ export const onUpdateBlog = /* GraphQL */ `
           id
           title
           content
+          linkName
           blogID
           createdAt
           updatedAt
@@ -53,6 +55,7 @@ export const onDeleteBlog = /* GraphQL */ `
           id
           title
           content
+          linkName
           blogID
           createdAt
           updatedAt
@@ -70,6 +73,7 @@ export const onCreatePost = /* GraphQL */ `
       id
       title
       content
+      linkName
       blogID
       blog {
         id
@@ -101,6 +105,7 @@ export const onUpdatePost = /* GraphQL */ `
       id
       title
       content
+      linkName
       blogID
       blog {
         id
@@ -132,6 +137,7 @@ export const onDeletePost = /* GraphQL */ `
       id
       title
       content
+      linkName
       blogID
       blog {
         id
@@ -166,6 +172,7 @@ export const onCreateComment = /* GraphQL */ `
         id
         title
         content
+        linkName
         blogID
         blog {
           id
@@ -194,6 +201,7 @@ export const onUpdateComment = /* GraphQL */ `
         id
         title
         content
+        linkName
         blogID
         blog {
           id
@@ -222,6 +230,7 @@ export const onDeleteComment = /* GraphQL */ `
         id
         title
         content
+        linkName
         blogID
         blog {
           id

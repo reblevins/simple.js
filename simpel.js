@@ -3,7 +3,10 @@ const path = require('path');
 import { parse } from 'node-html-parser';
 const locationChangedEvent = new Event('locationChanged')
 
-import { createBlog, updateBlog, deleteBlog, createPost, updatePost, deletePost, createComment, updateComment, deleteComment} from './src/graphql/mutations';
+import { Amplify, API, graphqlOperation } from 'aws-amplify';
+import { createBlog, updateBlog, deleteBlog, createPost, updatePost, deletePost, createComment, updateComment, deleteComment} from './src/graphql/mutations.js';
+import { listBlogs, listPosts } from './src/graphql/queries.js';
+import { getPostByLinkName } from './src/customgraphql/queries.js';
 
 export class Simpel {
     constructor(config) {
@@ -22,6 +25,8 @@ export class Simpel {
         this.appDiv = document.createElement('div');
         this.appDiv.innerHTML = this.template;
         document.body.appendChild(this.appDiv);
+
+        this.getPostByLinkName();
 
         if (this.router) {
             this.router.locationChanged().then(() => {
@@ -53,6 +58,45 @@ export class Simpel {
                 body: JSON.stringify(this.proxy[apiRoute[0]])
             })
             // .then(obj => console.log(obj))
+        }
+    }
+
+    async getBlogInfo() {
+        try {
+            const blogs = await API.graphql({
+                query: listBlogs
+            })
+            console.dir(blogs.data.listBlogs.items);
+        } catch(err) {
+            console.log(err);
+        }
+    }
+
+    async getAllPosts() {
+        try {
+            const blogs = await API.graphql({
+                query: listPosts
+            })
+            console.dir(blogs.data);
+        } catch(err) {
+            console.log(err);
+        }
+    }
+
+    async getPostByLinkName() {
+        let filter = {
+            linkName: {
+                eq: "lorem-ipsum" // filter priority = 1
+            }
+        };
+        try {
+            const blogs = await API.graphql(graphqlOperation(
+                getPostByLinkName,
+                { linkName: 'lorem-ipsum' }
+            ))
+            console.dir(blogs.data);
+        } catch(err) {
+            console.log(err);
         }
     }
 
