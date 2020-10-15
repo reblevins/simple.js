@@ -10,6 +10,11 @@
             "StackName": "amplify-simpeljs-dev-174701",
             "StackId": "arn:aws:cloudformation:us-east-2:414705225856:stack/amplify-simpeljs-dev-174701/681ac020-08f7-11eb-915a-0a9c3780d6ee",
             "AmplifyAppId": "d2yn2cxlyu40hq"
+        },
+        "categories": {
+            "auth": {
+                "cognito20ba519a": {}
+            }
         }
     }
 }

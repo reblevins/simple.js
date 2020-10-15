@@ -3,10 +3,7 @@ const path = require('path');
 import { parse } from 'node-html-parser';
 const locationChangedEvent = new Event('locationChanged')
 
-import { Amplify, API, graphqlOperation } from 'aws-amplify';
-import { createBlog, updateBlog, deleteBlog, createPost, updatePost, deletePost, createComment, updateComment, deleteComment} from './src/graphql/mutations.js';
-import { listBlogs, listPosts } from './src/graphql/queries.js';
-import { getPostByLinkName } from './src/customgraphql/queries.js';
+import { Auth, API } from 'aws-amplify';
 
 export class Simpel {
     constructor(config) {
@@ -25,8 +22,8 @@ export class Simpel {
         this.appDiv = document.createElement('div');
         this.appDiv.innerHTML = this.template;
         document.body.appendChild(this.appDiv);
-
-        this.getPostByLinkName();
+        this.authState = 'signIn';
+        this.formInputState = { username: '', password: '' };
 
         if (this.router) {
             this.router.locationChanged().then(() => {
@@ -61,43 +58,16 @@ export class Simpel {
         }
     }
 
-    async getBlogInfo() {
-        try {
-            const blogs = await API.graphql({
-                query: listBlogs
-            })
-            console.dir(blogs.data.listBlogs.items);
-        } catch(err) {
-            console.log(err);
-        }
+    onChange(e) {
+        this.formInputState = { ...this.formInputState, [e.target.name]: e.target.value };
     }
 
-    async getAllPosts() {
+    async signIn() {
         try {
-            const blogs = await API.graphql({
-                query: listPosts
-            })
-            console.dir(blogs.data);
-        } catch(err) {
-            console.log(err);
-        }
-    }
-
-    async getPostByLinkName() {
-        let filter = {
-            linkName: {
-                eq: "lorem-ipsum" // filter priority = 1
-            }
-        };
-        try {
-            const blogs = await API.graphql(graphqlOperation(
-                getPostByLinkName,
-                { linkName: 'lorem-ipsum' }
-            ))
-            console.dir(blogs.data);
-        } catch(err) {
-            console.log(err);
-        }
+            await Auth.signIn(formInputState.username, formInputState.password);
+            /* Once the user successfully signs in, update the form state to show the signed in state */
+            formState = "signedIn";
+        } catch (err) { console.log({ err }); }
     }
 
     getComponentsHTML() {

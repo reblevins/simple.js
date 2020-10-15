@@ -5,23 +5,47 @@
 			"providerPlugin": "awscloudformation"
 		}
 	},
-	"function": {},
-	"api": {
-		"simpeljs": {
-			"service": "AppSync",
+	"function": {
+		"SimpelCMSPosts": {
+			"build": true,
 			"providerPlugin": "awscloudformation",
-			"output": {
-				"authConfig": {
-					"defaultAuthentication": {
-						"authenticationType": "API_KEY",
-						"apiKeyConfig": {
-							"apiKeyExpirationDays": 365,
-							"description": "simpeljsAPIKey"
-						}
-					},
-					"additionalAuthenticationProviders": []
+			"service": "Lambda",
+			"dependsOn": [
+				{
+					"category": "storage",
+					"resourceName": "simpleCMSDb",
+					"attributes": [
+						"Name",
+						"Arn"
+					],
+					"attributeEnvMap": {
+						"Name": "TABLE_NAME",
+						"Arn": "TABLE_ARN"
+					}
 				}
-			}
+			]
+		}
+	},
+	"api": {
+		"SimpleCMSAPI": {
+			"service": "API Gateway",
+			"providerPlugin": "awscloudformation",
+			"dependsOn": [
+				{
+					"category": "function",
+					"resourceName": "SimpelCMSPosts",
+					"attributes": [
+						"Name",
+						"Arn"
+					]
+				}
+			]
+		}
+	},
+	"auth": {
+		"cognito20ba519a": {
+			"service": "Cognito",
+			"providerPlugin": "awscloudformation"
 		}
 	}
 }

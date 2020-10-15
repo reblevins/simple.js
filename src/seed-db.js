@@ -1,12 +1,6 @@
 import pkg from 'aws-amplify';
-const { Amplify, API } = pkg;
+const { Auth, API } = pkg;
 
-import mutations from './graphql/mutations.js';
-const { createBlog, updateBlog, deleteBlog, createPost, updatePost, deletePost, createComment, updateComment, deleteComment } = mutations
-import queries from './graphql/queries.js';
-const { listBlogs } = queries;
-// import creds from './aws-exports.js';
-// const { apiCreds } = creds;
 import aws_exports from './aws-exports.js';
 
 Amplify.configure(aws_exports);
@@ -30,32 +24,12 @@ const posts = [
 ];
 
 
-async function submitNewBlog() {
+async function signIn() {
     try {
-        await API.graphql({
-            query: createBlog,
-            variables: {
-                input: {
-                    id: 'simpel-cms',
-                    name: 'Simpel CMS'
-                }
-            }
-        })
-        console.log('Done');
-    } catch(err) {
-        console.log(err);
-    }
-}
-
-async function getBlogInfo() {
-    try {
-        const blogs = await API.graphql({
-            query: listBlogs
-        })
-        console.dir(blogs.data.listBlogs.items);
-    } catch(err) {
-        console.log(err);
-    }
+        await Auth.signIn('reblevins', 'jolanda1');
+        /* Once the user successfully signs in, update the form state to show the signed in state */
+        seedBlogPosts();
+    } catch (err) { console.log({ err }); }
 }
 
 async function seedBlogPosts() {

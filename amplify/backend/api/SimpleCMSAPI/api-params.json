@@ -1,0 +1,44 @@
+{
+    "paths": [
+        {
+            "name": "/posts",
+            "lambdaFunction": "SimpelCMSPosts",
+            "privacy": {
+                "protected": true,
+                "auth": [
+                    "/POST",
+                    "/GET",
+                    "/PUT",
+                    "/PATCH",
+                    "/DELETE"
+                ],
+                "unauth": [
+                    "/GET"
+                ]
+            }
+        }
+    ],
+    "resourceName": "SimpleCMSAPI",
+    "apiName": "SimpleCMSAPI",
+    "functionArns": [
+        {
+            "lambdaFunction": "SimpelCMSPosts"
+        }
+    ],
+    "privacy": {
+        "auth": 1,
+        "unauth": 1,
+        "authRoleName": "amplify-simpeljs-dev-174701-authRole",
+        "unAuthRoleName": "amplify-simpeljs-dev-174701-unauthRole"
+    },
+    "dependsOn": [
+        {
+            "category": "function",
+            "resourceName": "SimpelCMSPosts",
+            "attributes": [
+                "Name",
+                "Arn"
+            ]
+        }
+    ]
+}
