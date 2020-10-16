@@ -11,7 +11,8 @@ module.exports = {
     devtool: 'inline-source-map',
     devServer: {
         contentBase: './dist',
-        historyApiFallback: true
+        historyApiFallback: true,
+        hot: true
     },
     plugins: [
         new CleanWebpackPlugin({ cleanStaleWebpackAssets: false }),
@@ -49,7 +50,7 @@ module.exports = {
         ]
     },
     output: {
-        filename: '[name].[contenthash].js',
+        filename: '[name].[hash].js',
         path: path.resolve(__dirname, 'dist'),
         publicPath: '/'
     }
