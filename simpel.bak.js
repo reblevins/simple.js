@@ -3,31 +3,7 @@ const path = require('path');
 import { parse } from 'node-html-parser';
 const locationChangedEvent = new Event('locationChanged')
 
-// const get = (object, path, value) => {
-// 	const pathArray = Array.isArray(path) ? path : path.split('.').filter(key => key)
-// 	const pathArrayFlat = pathArray.flatMap(part => typeof part === 'string' ? part.split('.') : part)
-//
-// 	return pathArrayFlat.reduce((obj, key) => obj && obj[key], object) || value
-// }
-
-const get = (obj, path, defaultValue) => path.split(".")
-.reduce((a, c) => (a && a[c] ? a[c] : (defaultValue || null)), obj)
-
-const set = (obj, path, value) => {
-    if (Object(obj) !== obj) return obj; // When obj is not an object
-    // If not yet an array, get the keys from the string-path
-    if (!Array.isArray(path)) path = path.toString().match(/[^.[\]]+/g) || [];
-    path.slice(0,-1).reduce((a, c, i) => // Iterate all of them except the last one
-         Object(a[c]) === a[c] // Does the key exist and is its value an object?
-             // Yes: then follow that path
-             ? a[c]
-             // No: create the key. Is the next key a potential array-index?
-             : a[c] = Math.abs(path[i+1])>>0 === +path[i+1]
-                   ? [] // Yes: assign a new array object
-                   : {}, // No: assign a new plain object
-         obj)[path[path.length-1]] = value; // Finally assign the value to the last key
-    return obj; // Return the top-level object to allow chaining
-};
+import { Auth, Amplify, API } from 'aws-amplify';
 
 export class Simpel {
     constructor(config) {
@@ -38,20 +14,25 @@ export class Simpel {
 
     init() {
         this.bindings = {}
-        this.components = {}
+		this.components = {}
+        this.controllers = {}
         this.proxy = {}
         this.componentsHTML = {};
         this.data = null
         this.appDiv = document.createElement('div');
         this.appDiv.innerHTML = this.template;
         document.body.appendChild(this.appDiv);
+        this.authState = 'signIn';
+        this.formInputState = { username: '', password: '' };
+
+        Amplify.configure(this.apiConfig);
 
         if (this.router) {
             this.router.locationChanged().then(() => {
                 this.getComponentsHTML()
             })
             window.handleLinkClick = (event) => {
-                console.log(event);
+                // console.log(event);
             }
 
             // const event = new Event('locationChanged');
@@ -70,12 +51,25 @@ export class Simpel {
 
         window.save = (event) => {
             let apiRoute = event.split('/').shift()
-            console.log(apiRoute);
+            // console.log(apiRoute);
             fetch(this.api + `/${apiRoute[0]}`, {
                 method: 'POST',
                 body: JSON.stringify(this.proxy[apiRoute[0]])
-            }).then(obj => console.log(obj))
+            })
+            // .then(obj => console.log(obj))
         }
+    }
+
+    onChange(e) {
+        this.formInputState = { ...this.formInputState, [e.target.name]: e.target.value };
+    }
+
+    async signIn() {
+        try {
+            await Auth.signIn(formInputState.username, formInputState.password);
+            /* Once the user successfully signs in, update the form state to show the signed in state */
+            formState = "signedIn";
+        } catch (err) { console.log({ err }); }
     }
 
     getComponentsHTML() {
@@ -92,190 +86,363 @@ export class Simpel {
             importAll(require.context('./src/templates/', false, /.html$/));
         }
 
-        // let parsedHTML = parse(this.componentsHTML['posts'], { comment: true });
+        var parsedHTML = parse(this.router.routerElement.innerHTML, { comment: true });
         // console.log(parsedHTML);
         // this.appDiv.appendChild(parsedHTML.childNodes[0])
-        for (let tag in this.componentsHTML) {
-            Array.prototype.slice.call(this.appDiv.getElementsByTagName(tag)).map(element => {
-                var newElement = document.createElement('div')
-                newElement.innerHTML = this.componentsHTML[tag]
-                var parent = element.parentNode
-                parent.replaceChild(newElement, element)
+		// console.log(parsedHTML);
 
-                let model = tag
-                let apiRoute = model
-                if (this.router) {
-                    model = apiRoute = this.router.historyState.model
-                    apiRoute += (this.router.historyState.id) ? '/' + this.router.historyState.id : ''
-                }
-                this.getComponentData(apiRoute).then(data => {
-                    var controllerFunction = new Function(`return function ${model}Controller() { this[model] = data }`)
-                    if (!this.components[model]) {
-                        this.components[model] = {
-                            data: {},
-                            elements: []
-                        }
-                    }
-                    this.components[model].data = data
-                    this.components[model].elements.push(newElement)
-                    Array.prototype.slice.call(newElement.querySelectorAll('[list]')).map(subElement => {
-                        var boundValue = subElement.getAttribute('list');
-                        var parentListElement = subElement.parentNode
-						let values = get(this.components[model].data, boundValue, null)
-                        if (Array.isArray(values)) {
-                            values.forEach((item, index) => {
-                                var listElement = document.createElement(subElement.tagName.toLowerCase())
-                                listElement.innerHTML = subElement.innerHTML
-                                if (subElement.hasAttributes()) {
-                                    for (let attr in subElement.attributes) {
-                                        if (subElement.attributes[attr] && subElement.attributes[attr].name && subElement.attributes[attr].value) {
-                                            listElement.setAttribute(subElement.attributes[attr].name, subElement.attributes[attr].value)
-                                        }
-                                    }
-                                }
-                                this.replaceTextNodes(listElement, item, `${model}[${index}]`)
-                                parentListElement.appendChild(listElement)
-                                this.getBindings(listElement, item, `${model}[${index}]`)
-                            })
-                        }
-                        parentListElement.removeChild(subElement)
+		var model;
+		if (this.router) {
+			model = this.router.historyState.model
+			model += (this.router.historyState.id) ? '/' + this.router.historyState.id : ''
+			// console.log(this.router.routerElement);
+		}
+		if (model !== 'undefined') {
+            this.getComponentData(model).then(async (data) => {
+    			this.controllers[model] = {
+    				data,
+    				elements: {}
+    			}
+                this.render({ model, parentNode: this.router.routerElement }).then(() => {
+                    this.renderLists({ model, parentNode: this.router.routerElement }).then(() => {
+                        // setTimeout(() => {
+                        // console.log(model, this.controllers[model]);
+                            this.assignProxy(model)
+                        // }, 5000)
                     })
-                    this.replaceTextNodes(this.appDiv, data, `${model}`)
-                    this.assignProxy(this.components[model].data)
-                    console.log(this.proxy['todos']);
                 })
-            })
+    		})
         }
+    }
+
+	render(options) {
+        return new Promise((resolve, reject) => {
+            var { model, parentNode, binding = null } = options
+            var { data = null } = this.controllers[model]
+
+            // childNodes.forEach(node => {
+            // var childNodes = parentNode.querySelectorAll('*')
+            var childNodes = parentNode.childNodes
+
+            let promises = []
+            for (let i = 0; i < childNodes.length; i++) {
+                promises[i] = new Promise(async (resolve, reject) => {
+
+                    // let node = childNodes.item(i).cloneNode(true)
+                    let node = childNodes.item(i)
+        			if (node.nodeType === 3 && !parentNode.hasAttribute('list')) {
+                        await this.getTextNodes({ model, parentNode, node })
+        			} else if (node.nodeType === 1 && !parentNode.hasAttribute('list')) {
+        				switch (node.tagName.toLowerCase()) {
+        					case 'input':
+        						if (node.getAttribute('model')) {
+        							await this.getInputs({ model, parentNode, node, binding })
+        						}
+        						break;
+        					default:
+        						break;
+        				}
+        			}
+
+                    if (node.childNodes.length > 0 && !parentNode.hasAttribute('list')) {
+                        await this.render({ model, parentNode: node })
+                    }
+                    resolve()
+                })
+            }
+            Promise.all(promises).then(() => {
+                resolve();
+            })
+        }).catch(err => {
+            console.log(err);
+            reject(err)
+        })
+	}
+
+    renderLists(options) {
+        return new Promise(async (resolve, reject) => {
+            var { model, parentNode } = options;
+            var { data = null } = this.controllers[model];
+
+            await Array.prototype.slice.call(parentNode.querySelectorAll('[list]')).map(node => {
+                var localModel = node.getAttribute('list');
+                if (Array.isArray(data[localModel])) {
+                    data[localModel].forEach(async (itemData, index) => {
+                        let listElement = document.createElement(node.tagName.toLowerCase());
+                        let attributes = [ 'class', 'hide-if', 'show-if' ]
+                        // if (node.hasAttributes()) {
+                        //     await attributes.forEach((attr, i) => {
+                        //         if (node.getAttribute(attr)) listElement.setAttribute(node.attributes[attr].name, node.attributes[attr].value)
+                        //     });
+                        // }
+                        if (node.getAttribute('class')) listElement.setAttribute('class', node.getAttribute('class'))
+                        let binding = `${localModel}[${index}]`
+                        listElement.setAttribute('model', binding)
+                        if (node.hasAttribute('hide-if')) {
+                            let boundValue = node.getAttribute('hide-if')
+                            listElement.setAttribute('hide-if', `${binding}.${boundValue}`)
+                        }
+                        if (node.hasAttribute('show-if')) {
+                            let boundValue = node.getAttribute('show-if')
+                            listElement.setAttribute('show-if', `${binding}.${boundValue}`)
+                        }
+                        listElement.innerHTML = node.innerHTML
+                        if (node.parentNode)
+                            node.parentNode.appendChild(listElement)
+
+                        await this.getTextNodes({ model, parentNode: listElement, node: listElement, binding })
+                        await this.showHide({ model, node: listElement, data: itemData })
+                    })
+                }
+                if (node.parentNode) {
+                    node.parentNode.removeChild(node);
+                }
+            });
+            resolve()
+        }).catch(err => {
+            console.log(err);
+            reject(err)
+        })
+    }
+
+	getTextNodes(options) {
+        return new Promise(async (resolve, reject) => {
+            var { model, parentNode = null, node, binding = null } = options
+            var { data = null } = this.controllers[model]
+    		var localModel, boundValue
+            await Array.prototype.slice.call(parentNode.getElementsByTagName('simpel-link')).map(link => {
+                // console.log(link, parentNode, binding);
+    			// First check if the parent node is a list that hasn't been rendered yet
+    			if (!link.parentNode.hasAttribute('list')) {
+    	            var route = link.getAttribute('route')
+    	            var textNodes = route.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
+    	            if (textNodes && textNodes.length > 0) {
+    	                textNodes.forEach((node, i) => {
+    	                    var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '')
+    	                    boundValue = (binding) ? `${binding}.${boundValue}` : boundValue;
+    	                    route = route.replace(node, _.get(data, boundValue))
+    	                })
+    	            }
+    	            link.setAttribute('route', route);
+    			}
+            })
+    		let dataNodes = node.textContent.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
+    		if (dataNodes && dataNodes.length > 0) {
+    			dataNodes.forEach((dataNode, i) => {
+    				localModel = dataNode.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
+    				boundValue = (binding) ? `${binding}.${localModel}` : localModel;
+                    let dataPoint = _.get(data, boundValue)
+                    parentNode.innerHTML = parentNode.innerHTML.replace(dataNode, `<simpel-text model="${boundValue}">${dataPoint}</simpel-text>`);
+    				if (!this.controllers[model].elements[boundValue]) {
+    					this.controllers[model].elements[`${boundValue}`] = {
+    						elements: [],
+    						instances: [],
+    						hide: [],
+    						show: []
+    					};
+    				}
+    			});
+    		}
+    		await Array.prototype.slice.call(parentNode.querySelectorAll(`simpel-text[model="${boundValue}"]`)).map(simpelTextElement => {
+    			let div = document.createElement("div");
+                simpelTextElement.parentNode.replaceChild(div, simpelTextElement)
+                div.outerHTML = simpelTextElement.innerHTML
+    			this.controllers[model].elements[boundValue].elements.push(div);
+    		})
+            resolve()
+        }).catch(err => {
+            console.log(err);
+            reject(err)
+        })
+		// return elements;
+        return;
+	}
+
+    getInputs(options) {
+        return new Promise(async (resolve, reject) => {
+            var { model, parentNode = null, node, binding = null } = options
+            var { data = null } = this.controllers[model]
+
+            var localModel = node.getAttribute('model');
+            if (localModel.indexOf('[') == -1) {
+                var boundValue = (binding) ? `${binding}.${localModel}` : localModel
+                // console.log(node.parentNode, boundValue);
+
+                let dataPoint = _.get(data, boundValue)
+                if (parentNode.tagName == 'LI') console.log(node);
+
+                // console.log(dataPoint);
+                if (node.getAttribute('type') == 'checkbox' && dataPoint === true) {
+                    node.setAttribute('checked', 'checked')
+                    node.value = localModel
+                } else {
+                    node.value = dataPoint
+                }
+                node.setAttribute('model', boundValue)
+
+                if (!this.controllers[model].elements[boundValue]) {
+                    this.controllers[model].elements[`${boundValue}`] = {
+                        elements: [],
+                        instances: [],
+                        hide: [],
+                        show: []
+                    };
+                }
+                this.controllers[model].elements[boundValue].elements.push(node);
+            }
+            resolve()
+        }).catch(err => {
+            console.log(err);
+            reject(err)
+        })
+	}
+	// getInputs(options) {
+    //     return new Promise(async (resolve, reject) => {
+    //         var { model, parentNode = null, node, binding = null } = options
+    //         var { data = null } = this.controllers[model]
+    //         var childNodes = parentNode.querySelectorAll('input')
+    //         // console.log(childNodes);
+    //         let promises = []
+    //         for (let i = 0; i < childNodes.length; i++) {
+    //             promises[i] = new Promise((resolve, reject) => {
+    //                 let element = childNodes.item(i)
+    //                 // let element = key
+    // 				var localModel = element.getAttribute('model');
+    //                 if (localModel.indexOf('[') == -1) {
+    //     				var boundValue = (binding) ? `${binding}.${localModel}` : localModel
+    //                     // console.log(element.parentNode, boundValue);
+    //
+    //     				let dataPoint = _.get(data, boundValue)
+    //     				// console.log(dataPoint);
+    //     				if (element.getAttribute('type') == 'checkbox' && dataPoint === true) {
+    //     					element.setAttribute('checked', 'checked')
+    //     					element.value = localModel
+    //     				} else {
+    //     					element.value = dataPoint
+    //     				}
+    //     				element.setAttribute('model', boundValue)
+    //
+    //     				if (!this.controllers[model].elements[boundValue]) {
+    //     					this.controllers[model].elements[`${boundValue}`] = {
+    //     						elements: [],
+    //     						instances: [],
+    //     						hide: [],
+    //     						show: []
+    //     					};
+    //     				}
+    //     				this.controllers[model].elements[boundValue].elements.push(element);
+    //                 }
+    //                 resolve()
+    //             })
+    // 		}
+    //         Promise.all(promises).then(() => {
+    //             resolve()
+    //         })
+    //     }).catch(err => {
+    //         console.log(err);
+    //         reject(err)
+    //     })
+	// }
+
+    showHide(options) {
+        var { model, node } = options
+        var { data = null } = this.controllers[model]
+        return new Promise((resolve, reject) => {
+            if (node.hasAttribute('hide-if') && !node.hasAttribute('list')) {
+                console.log(node);
+                let boundValue = node.getAttribute('hide-if')
+                console.log(boundValue);
+                if (!_.get(this.controllers[model].elements, boundValue)) {
+                    _.set(this.controllers[model].elements, boundValue, {
+                        elements: [],
+                        instances: [],
+                        hide: [],
+                        show: []
+                    })
+                }
+                let hidden = document.createElement('simpel-hidden-element')
+                _.get(this.controllers[model].elements, boundValue).hide.push({
+                    element: node,
+                    // display: window.getComputedStyle(node).getPropertyValue('display'),
+                    parent: node.parentNode,
+                    replacementElement: hidden
+                })
+                if (_.get(data, boundValue)) {
+                    // node.style.display = 'none';
+                    node.parentNode.replaceChild(hidden, node)
+                    // element.parentNode.removeChild(element)
+                }
+            }
+            if (node.hasAttribute('show-if') && !node.hasAttribute('list')) {
+                let boundValue = node.getAttribute('show-if')
+                if (!_.get(this.controllers[model].elements, boundValue)) {
+                    _.set(this.controllers[model].elements, boundValue, {
+                        elements: [],
+                        instances: [],
+                        hide: [],
+                        show: []
+                    })
+                }
+                let hidden = document.createElement('simpel-hidden-element')
+                _.get(this.controllers[model].elements, boundValue).show.push({
+                    element: node,
+                    // display: window.getComputedStyle(node).getPropertyValue('display'),
+                    parent: node.parentNode,
+                    replacementElement: hidden
+                })
+                if (!_.get(data, boundValue)) {
+                    // node.style.display = 'none';
+                    if (node.parentNode) {
+                        node.parentNode.replaceChild(hidden, node)
+                    } else {
+                        // console.log("node", node);
+                    }
+                    // element.parentNode.removeChild(element)
+                }
+            }
+            resolve()
+        })
+    }
+
+    async getAllPosts() {
+        return new Promise(async (resolve, reject) => {
+            try {
+                let response = await API.get(this.apiName, '/posts')
+                resolve(response);
+            } catch (err) {
+                reject(err);
+            }
+        });
     }
 
     getComponentData(tag) {
-        console.log(tag);
-        return new Promise((resolve, reject) => {
-            // fetch(this.api + `/${tag}?_page=1&_limit=10`).then(response => {
-            fetch(this.api + `/${tag}`).then(response => {
-                if (response.ok) {
-                    return response.json()
+        return new Promise(async (resolve, reject) => {
+            if (tag === 'undefined') reject('Error')
+            try {
+                let response = await API.get(this.apiName, `/${tag}`)
+                console.log(response);
+                let returnData = {};
+                if (Array.isArray(response)) {
+                    returnData[tag] = response
                 } else {
-                    reject(response)
+                    returnData = response
                 }
-            }).then(data => {
-                resolve(data)
-            })
+                resolve(returnData)
+            } catch (err) {
+                reject(err)
+            }
         })
     }
 
-    replaceTextNodes(element, data, binding) {
-        Array.prototype.slice.call(element.getElementsByTagName('simpel-link')).map(link => {
-            var route = link.getAttribute('route')
-            var textNodes = route.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
-            if (textNodes && textNodes.length > 0) {
-                textNodes.forEach((node, i) => {
-                    var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '')
-                    route = route.replace(node, data[boundValue])
-                })
-            }
-            link.setAttribute('route', route);
-        })
-        this.textNodes = element.innerHTML.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
-        if (this.textNodes && this.textNodes.length > 0) {
-            this.textNodes.forEach((node, i) => {
-                var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '');
-                element.innerHTML = element.innerHTML.replace(node, `<simpel-text model="${boundValue}">${data[boundValue]}</simpel-text>`)
-            });
-        }
-    }
-
-    getBindings(element, data, binding) {
-        Array.prototype.slice.call(element.querySelectorAll('[model]'))
-        .map((elementWithModel) => {
-            let path = elementWithModel.getAttribute('model');
-            if (elementWithModel.tagName.toLowerCase() == 'simpel-text') {
-                let textNode = document.createTextNode(elementWithModel.innerHTML)
-                let parentDiv = elementWithModel.parentNode
-                parentDiv.replaceChild(textNode, elementWithModel)
-                elementWithModel = textNode
-            } else if (elementWithModel.type == "checkbox") {
-                // elementWithModel.value = path
-                // console.log(path, data);
-                if (data[path])
-                    elementWithModel.setAttribute('checked', 'checked');
-            } else {
-                elementWithModel.value = data[path]
-                elementWithModel.setAttribute('value', data[path]);
-            }
-            let boundValue = `${binding}.${path}`
-            if (!_.get(this.bindings, boundValue)) {
-                _.set(this.bindings, boundValue, {
-                    boundValue: boundValue,
-                    elements: [],
-                    instances: [],
-                    hide: [],
-                    show: []
-                })
-            }
-            _.get(this.bindings, boundValue).elements.push(elementWithModel);
-        });
-        if (element.hasAttribute('hide-if')) {
-            let path = element.getAttribute('hide-if')
-            let boundValue = `${binding}.${path}`
-            if (!_.get(this.bindings, boundValue)) {
-                _.set(this.bindings, boundValue, {
-                    boundValue: boundValue,
-                    elements: [],
-                    instances: [],
-                    hide: [],
-                    show: []
-                })
-            }
-            let hidden = document.createElement('simpel-hidden-element')
-            _.get(this.bindings, boundValue).hide.push({
-                element: element,
-                display: window.getComputedStyle(element).getPropertyValue('display'),
-                parent: element.parentNode,
-                replacementElement: hidden
-            })
-            if (data[path]) {
-                // element.style.display = 'none';
-                element.parentNode.replaceChild(hidden, element)
-                // element.parentNode.removeChild(element)
-            }
-        }
-        if (element.hasAttribute('show-if')) {
-            let path = element.getAttribute('show-if')
-            let boundValue = `${binding}.${path}`
-            if (!_.get(this.bindings, boundValue)) {
-                _.set(this.bindings, boundValue, {
-                    boundValue: boundValue,
-                    elements: [],
-                    instances: [],
-                    hide: [],
-                    show: []
-                })
-            }
-            let hidden = document.createElement('simpel-hidden-element')
-            _.get(this.bindings, boundValue).show.push({
-                element: element,
-                display: window.getComputedStyle(element).getPropertyValue('display'),
-                parent: element.parentNode,
-                replacementElement: hidden
-            })
-            if (!data[path]) {
-                // element.style.display = 'none';
-                element.parentNode.replaceChild(hidden, element)
-                // element.parentNode.removeChild(element)
-            }
-        }
-    }
-
-    assignProxy(ctrl) {
-		console.log(ctrl);
+    assignProxy(model) {
+        // console.log(JSON.parse(JSON.stringify(this.controllers[model].elements)));
+		var controller = this.controllers[model]
         // Update DOM element bound when controller property is set
         let proxyHandler = {
             set: (target, prop, value, receiver) => {
-				console.log(prop);
-                var bind = this.bindings[prop]
+				// console.log(prop, value);
+                var bind = _.get(this.controllers[model].elements, prop)
                 if (bind) {
-					console.log(bind);
                     bind.elements.forEach((element) => {
                         if (element.nodeType == 3) {
                             element.textContent = value
@@ -295,22 +462,17 @@ export class Simpel {
                         if (typeof value === 'boolean') {
                             if (!value) {
                                 hidden.replacementElement.parentNode.replaceChild(hidden.element, hidden.replacementElement)
-                                // hidden.element.style.display = null
                             } else {
                                 hidden.element.parentNode.replaceChild(hidden.replacementElement, hidden.element)
-                                // hidden.element.style.display = 'none'
                             }
                         }
                     });
                     bind.show.forEach((show, index) => {
                         if (typeof value === 'boolean') {
-                            console.log(show.display, value);
                             if (value) {
                                 show.replacementElement.parentNode.replaceChild(show.element, show.replacementElement)
-                                // show.element.style.display = null
                             } else {
                                 show.element.parentNode.replaceChild(show.replacementElement, show.element)
-                                // show.element.style.display = 'none'
                             }
                         }
                     });
@@ -318,35 +480,43 @@ export class Simpel {
                 return _.set(target, prop, value)
             }
         }
-        this.proxy = new Proxy(ctrl, proxyHandler);
+        this.proxy = new Proxy(this.controllers[model].data, proxyHandler);
         // Listen for DOM element update to set the controller property
-        this.addListeners(this.proxy, this.bindings)
+        // console.log(this.controllers[model]);
+        this.addListeners({ model, proxy: this.proxy })
 
-        // Fill proxy with ctrl properties
-        // and return proxy, not the ctrl!
-        Object.assign(this.proxy, ctrl);
+        // Fill proxy with model data
+        // and return proxy, not the data!
+        Object.assign(this.proxy, this.controllers[model].data);
     }
 
-    addListeners(proxy, bindings, parent = null) {
-        Object.keys(bindings).forEach((boundValue) => {
-            var bind = bindings[boundValue]
-            if (!bindings[boundValue].boundValue) {
-                this.addListeners(proxy, bindings[boundValue], boundValue)
-                return
-            }
-			// console.log(bind);
-            bind.elements.forEach((element) => {
-                element.addEventListener('input', (event) => {
-                    var value = (event.target.type == 'checkbox') ? event.target.checked : event.target.value
-                    proxy[bind.boundValue] = value;
-                })
-            })
-            bind.hide.forEach((element, index) => {
-                if (typeof prop === 'boolean') {
-                    // console.log(prop, value);
-                }
-            })
-        })
+    addListeners(options) {
+        var { model, proxy, parent = null } = options
+        for (let key in this.controllers[model].elements) {
+            let boundValue = key
+            var bind = this.controllers[model].elements[boundValue];
+            // console.log(key, boundValue);
+			// if (Array.isArray(bind)) {
+			// 	bind.forEach(subBind => {
+			// 		this.addListeners(proxy, subBind)
+			// 	})
+			// } else {
+            // console.log(boundValue, bind.elements);
+	            bind.elements.forEach((element) => {
+                    if (element.nodeType !== 3 && element.tagName == 'INPUT') {
+    	                element.addEventListener('input', (event) => {
+    	                    var value = (event.target.type == 'checkbox') ? event.target.checked : event.target.value
+    	                    proxy[boundValue] = value;
+    	                })
+                    }
+	            })
+	            bind.hide.forEach((element, index) => {
+	                if (typeof prop === 'boolean') {
+	                    // console.log(prop, value);
+	                }
+	            })
+			// }
+        }
     }
 }
 
@@ -365,10 +535,10 @@ class SimpelLink extends HTMLElement {
         super()
 
         // Create a shadow root
-        const shadow = this.attachShadow({mode: 'open'});
+        // const shadow = this.attachShadow({mode: 'open'});
 
-        const textNode = document.createTextNode(this.innerText)
-        shadow.appendChild(textNode)
+        // const textNode = document.createTextNode(this.innerText)
+        // shadow.appendChild(textNode)
 
         this.addEventListener('click', (event) => {
             var route = this.getAttribute('route').split('/')

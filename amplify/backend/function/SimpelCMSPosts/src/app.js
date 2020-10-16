@@ -58,7 +58,7 @@ const convertUrlType = (param, type) => {
  * HTTP Get method for list objects *
  ********************************/
 
-app.get(path + hashKeyPath, function(req, res) {
+app.get(path, function(req, res) {
   var condition = {}
   condition[partitionKeyName] = {
     ComparisonOperator: 'EQ'
@@ -77,10 +77,10 @@ app.get(path + hashKeyPath, function(req, res) {
 
   let queryParams = {
     TableName: tableName,
-    KeyConditions: condition
+    // KeyConditions: condition
   }
 
-  dynamodb.query(queryParams, (err, data) => {
+  dynamodb.scan(queryParams, (err, data) => {
     if (err) {
       res.statusCode = 500;
       res.json({error: 'Could not load items: ' + err});
@@ -94,7 +94,39 @@ app.get(path + hashKeyPath, function(req, res) {
  * HTTP Get method for get single object *
  *****************************************/
 
-app.get(path + '/object' + hashKeyPath + sortKeyPath, function(req, res) {
+ app.get(path + hashKeyPath, function(req, res) {
+ //   var condition = {}
+ //   condition[partitionKeyName] = {
+ //     ComparisonOperator: 'EQ'
+ //   }
+ //
+ //   if (userIdPresent && req.apiGateway) {
+ //     condition[partitionKeyName]['AttributeValueList'] = [req.apiGateway.event.requestContext.identity.cognitoIdentityId || UNAUTH ];
+ //   } else {
+ //     try {
+ //       condition[partitionKeyName]['AttributeValueList'] = [ convertUrlType(req.params[partitionKeyName], partitionKeyType) ];
+ //     } catch(err) {
+ //       res.statusCode = 500;
+ //       res.json({error: 'Wrong column type ' + err});
+ //     }
+ //   }
+ //
+ //   let queryParams = {
+ //     TableName: tableName,
+ //     KeyConditions: condition
+ //   }
+ //
+ //   dynamodb.query(queryParams, (err, data) => {
+ //     if (err) {
+ //       res.statusCode = 500;
+ //       res.json({error: 'Could not load items: ' + err});
+ //     } else {
+ //       res.json(data.Items);
+ //     }
+ //   });
+ // });
+
+// app.get(path + '/object' + hashKeyPath + sortKeyPath, function(req, res) {
   var params = {};
   if (userIdPresent && req.apiGateway) {
     params[partitionKeyName] = req.apiGateway.event.requestContext.identity.cognitoIdentityId || UNAUTH;
@@ -107,14 +139,14 @@ app.get(path + '/object' + hashKeyPath + sortKeyPath, function(req, res) {
       res.json({error: 'Wrong column type ' + err});
     }
   }
-  if (hasSortKey) {
-    try {
-      params[sortKeyName] = convertUrlType(req.params[sortKeyName], sortKeyType);
-    } catch(err) {
-      res.statusCode = 500;
-      res.json({error: 'Wrong column type ' + err});
-    }
-  }
+  // if (hasSortKey) {
+  //   try {
+  //     params[sortKeyName] = convertUrlType(req.params[sortKeyName], sortKeyType);
+  //   } catch(err) {
+  //     res.statusCode = 500;
+  //     res.json({error: 'Wrong column type ' + err});
+  //   }
+  // }
 
   let getItemParams = {
     TableName: tableName,

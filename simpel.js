@@ -3,7 +3,7 @@ const path = require('path');
 import { parse } from 'node-html-parser';
 const locationChangedEvent = new Event('locationChanged')
 
-import { Auth, API } from 'aws-amplify';
+import { Auth, Amplify, API } from 'aws-amplify';
 
 export class Simpel {
     constructor(config) {
@@ -24,6 +24,8 @@ export class Simpel {
         document.body.appendChild(this.appDiv);
         this.authState = 'signIn';
         this.formInputState = { username: '', password: '' };
+
+        Amplify.configure(this.apiConfig);
 
         if (this.router) {
             this.router.locationChanged().then(() => {
@@ -101,11 +103,10 @@ export class Simpel {
     				data,
     				elements: {}
     			}
-                // console.log(model, this.controllers[model]);
                 this.render({ model, parentNode: this.router.routerElement }).then(() => {
                     this.renderLists({ model, parentNode: this.router.routerElement }).then(() => {
                         // setTimeout(() => {
-                            console.log(JSON.parse(JSON.stringify(this.controllers[model].elements)));
+                        // console.log(model, this.controllers[model]);
                             this.assignProxy(model)
                         // }, 5000)
                     })
@@ -189,7 +190,7 @@ export class Simpel {
                         if (node.parentNode)
                             node.parentNode.appendChild(listElement)
 
-                        await this.render({ model, parentNode: listElement, binding })
+                        await this.getTextNodes({ model, parentNode: listElement, node: listElement, binding })
                         await this.showHide({ model, node: listElement, data: itemData })
                     })
                 }
@@ -210,16 +211,14 @@ export class Simpel {
             var { data = null } = this.controllers[model]
     		var localModel, boundValue
             await Array.prototype.slice.call(parentNode.getElementsByTagName('simpel-link')).map(link => {
-    			// First check if the parent node is a list
+                // console.log(link, parentNode, binding);
+    			// First check if the parent node is a list that hasn't been rendered yet
     			if (!link.parentNode.hasAttribute('list')) {
-    				// console.log(link, parentNode, binding);
     	            var route = link.getAttribute('route')
-    				// console.log(data, route, textNodes);
     	            var textNodes = route.match(/\{\{((?:.|\r?\n)+?)\}\}?/g);
     	            if (textNodes && textNodes.length > 0) {
     	                textNodes.forEach((node, i) => {
     	                    var boundValue = node.replace(/(\{\{)\s*|\s*(\}\})/gi, '')
-    						// console.log(binding, boundValue);
     	                    boundValue = (binding) ? `${binding}.${boundValue}` : boundValue;
     	                    route = route.replace(node, _.get(data, boundValue))
     	                })
@@ -245,10 +244,10 @@ export class Simpel {
     			});
     		}
     		await Array.prototype.slice.call(parentNode.querySelectorAll(`simpel-text[model="${boundValue}"]`)).map(simpelTextElement => {
-    			let textNode = document.createTextNode(_.get(data, boundValue))
-    			this.controllers[model].elements[boundValue].elements.push(textNode);
-                // console.log(textNode);
-    			simpelTextElement.parentNode.replaceChild(textNode, simpelTextElement)
+    			let div = document.createElement("div");
+                simpelTextElement.parentNode.replaceChild(div, simpelTextElement)
+                div.outerHTML = simpelTextElement.innerHTML
+    			this.controllers[model].elements[boundValue].elements.push(div);
     		})
             resolve()
         }).catch(err => {
@@ -405,27 +404,33 @@ export class Simpel {
         })
     }
 
+    async getAllPosts() {
+        return new Promise(async (resolve, reject) => {
+            try {
+                let response = await API.get(this.apiName, '/posts')
+                resolve(response);
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+
     getComponentData(tag) {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             if (tag === 'undefined') reject('Error')
-            // fetch(this.api + `/${tag}?_page=1&_limit=10`).then(response => {
-            fetch(this.api + `/${tag}`).then(response => {
-                if (response.ok) {
-                    return response.json()
+            try {
+                let response = await API.get(this.apiName, `/${tag}`)
+                console.log(response);
+                let returnData = {};
+                if (Array.isArray(response)) {
+                    returnData[tag] = response
                 } else {
-                    reject(response)
-                }
-            }).then(data => {
-                var returnData = {}
-                if (Array.isArray(data)) {
-                    returnData[tag] = data
-                } else {
-                    returnData = data
+                    returnData = response
                 }
                 resolve(returnData)
-            }).catch(err => {
+            } catch (err) {
                 reject(err)
-            })
+            }
         })
     }
 

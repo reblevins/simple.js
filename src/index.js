@@ -1,11 +1,9 @@
 import { Simpel } from '../simpel.js';
 import { SimpelRouter } from '../simpel-router.js'
 import './style.scss';
-import { Auth, Amplify, API } from 'aws-amplify';
+// import { Auth, Amplify, API } from 'aws-amplify';
 
 import aws_exports from './aws-exports.js';
-
-Amplify.configure(aws_exports);
 
 const posts = [
     {
@@ -45,23 +43,33 @@ async function signIn() {
 async function seedBlogPosts() {
     posts.forEach(async (post, i) => {
         let myInit = {
-            body: post,
-            headers: {
-                Authorization: `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`,
-            },
+            body: post
         };
         let response = await API.put('SimpleCMSAPI', '/posts', myInit);
         console.log(response);
     });
 }
 
-signIn();
+async function getBlogPosts() {
+    try {
+        let response = await API.get('SimpleCMSAPI', '/posts')
+        console.log(response);
+    } catch (err) {
+        console.log(err);
+    }
+
+}
+
+// signIn();
 // seedBlogPosts();
+// getBlogPosts();
 
 var App = require('./App.html');
 
 new Simpel({
     template: App,
-    api: 'https://1hc6wchzzd.execute-api.us-east-2.amazonaws.com',
+    apiName: 'SimpleCMSAPI',
+    apiConfig: aws_exports,
+    // api: 'https://1hc6wchzzd.execute-api.us-east-2.amazonaws.com',
     router: new SimpelRouter()
 }).init()
