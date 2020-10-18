@@ -64,13 +64,26 @@ export class Simpel {
         this.formInputState = { ...this.formInputState, [e.target.name]: e.target.value };
     }
 
-    async signIn() {
-        try {
-            await Auth.signIn(formInputState.username, formInputState.password);
-            /* Once the user successfully signs in, update the form state to show the signed in state */
-            formState = "signedIn";
-        } catch (err) { console.log({ err }); }
-    }
+	async signIn() {
+	    try {
+	        user = await Auth.signIn('reblevins', 'Jolanda_1');
+	        if (user.challengeName === 'NEW_PASSWORD_REQUIRED') {
+	            await Auth.completeNewPassword(
+	                user,               // the Cognito User Object
+	                'Jolanda_1'
+	            ).then(user => {
+	                // at this time the user is logged in if no MFA required
+	                console.log(user);
+	            }).catch(e => {
+	                console.log(e);
+	            });
+	        } else {
+	            // other situations
+	        }
+	        await seedBlogPosts();
+	        getBlogPosts();
+	    } catch (err) { console.log({ err }); }
+	}
 
     getComponentsHTML() {
         if (Object.keys(this.componentsHTML).length == 0) {
