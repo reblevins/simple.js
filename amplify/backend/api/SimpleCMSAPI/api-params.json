@@ -1,6 +1,23 @@
 {
     "paths": [
         {
+            "name": "/pages",
+            "lambdaFunction": "SimpelCMSPages",
+            "privacy": {
+                "protected": true,
+                "auth": [
+                    "/POST",
+                    "/GET",
+                    "/PUT",
+                    "/PATCH",
+                    "/DELETE"
+                ],
+                "unauth": [
+                    "/GET"
+                ]
+            }
+        },
+        {
             "name": "/posts",
             "lambdaFunction": "SimpelCMSPosts",
             "privacy": {
@@ -22,16 +39,27 @@
     "apiName": "SimpleCMSAPI",
     "functionArns": [
         {
+            "lambdaFunction": "SimpelCMSPages"
+        },
+        {
             "lambdaFunction": "SimpelCMSPosts"
         }
     ],
     "privacy": {
-        "auth": 1,
-        "unauth": 1,
+        "auth": 2,
+        "unauth": 2,
         "authRoleName": "amplify-simpeljs-dev-174701-authRole",
         "unAuthRoleName": "amplify-simpeljs-dev-174701-unauthRole"
     },
     "dependsOn": [
+        {
+            "category": "function",
+            "resourceName": "SimpelCMSPages",
+            "attributes": [
+                "Name",
+                "Arn"
+            ]
+        },
         {
             "category": "function",
             "resourceName": "SimpelCMSPosts",
@@ -40,5 +68,6 @@
                 "Arn"
             ]
         }
-    ]
+    ],
+    "uuid": "01ebb014"
 }

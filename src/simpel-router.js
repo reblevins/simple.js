@@ -14,7 +14,7 @@ export class SimpelRouter {
                 this.routes[routePath[0]][_.kebabCase(routePath[1].replace('./', '').replace('.html', ''))] = requireContext(key)
             }
         });
-        importAll(require.context('./src/routes/', true, /.html$/));
+        importAll(require.context('./routes/', true, /.html$/));
 
         this.upateRoute()
     }

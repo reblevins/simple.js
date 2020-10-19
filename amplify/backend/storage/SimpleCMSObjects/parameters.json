@@ -1,0 +1,7 @@
+{
+    "tableName": "SimpleCMSObjects",
+    "partitionKeyName": "objectType",
+    "partitionKeyType": "S",
+    "sortKeyName": "linkName",
+    "sortKeyType": "S"
+}

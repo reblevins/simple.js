@@ -96,7 +96,7 @@ export class Simpel {
             // next, we call our importAll() function to load the files
             // notice how this is where we call the require.context() function
             // it uses our file path, whether to load subdirectories and what file type to get
-            importAll(require.context('./src/templates/', false, /.html$/));
+            importAll(require.context('./templates/', false, /.html$/));
         }
 
         var parsedHTML = parse(this.router.routerElement.innerHTML, { comment: true });
