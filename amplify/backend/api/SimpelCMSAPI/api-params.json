@@ -16,38 +16,18 @@
                     "/GET"
                 ]
             }
-        },
-        {
-            "name": "/posts",
-            "lambdaFunction": "SimpelCMSPosts",
-            "privacy": {
-                "protected": true,
-                "auth": [
-                    "/POST",
-                    "/GET",
-                    "/PUT",
-                    "/PATCH",
-                    "/DELETE"
-                ],
-                "unauth": [
-                    "/GET"
-                ]
-            }
         }
     ],
-    "resourceName": "SimpleCMSAPI",
-    "apiName": "SimpleCMSAPI",
+    "resourceName": "SimpelCMSAPI",
+    "apiName": "SimpelCMSAPI",
     "functionArns": [
         {
             "lambdaFunction": "SimpelCMSPages"
-        },
-        {
-            "lambdaFunction": "SimpelCMSPosts"
         }
     ],
     "privacy": {
-        "auth": 2,
-        "unauth": 2,
+        "auth": 1,
+        "unauth": 1,
         "authRoleName": "amplify-simpeljs-dev-174701-authRole",
         "unAuthRoleName": "amplify-simpeljs-dev-174701-unauthRole"
     },
@@ -59,15 +39,6 @@
                 "Name",
                 "Arn"
             ]
-        },
-        {
-            "category": "function",
-            "resourceName": "SimpelCMSPosts",
-            "attributes": [
-                "Name",
-                "Arn"
-            ]
         }
-    ],
-    "uuid": "01ebb014"
+    ]
 }

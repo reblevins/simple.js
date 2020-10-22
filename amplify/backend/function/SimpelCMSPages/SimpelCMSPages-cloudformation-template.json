@@ -77,7 +77,7 @@
 				"Timeout": "25",
 				"Code": {
 					"S3Bucket": "amplify-simpeljs-dev-174701-deployment",
-					"S3Key": "amplify-builds/SimpelCMSPages-613044563842412f724e-build.zip"
+					"S3Key": "amplify-builds/SimpelCMSPages-48633842756473324163-build.zip"
 				}
 			}
 		},

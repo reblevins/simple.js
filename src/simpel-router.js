@@ -2,7 +2,10 @@ import _ from 'lodash';
 const path = require('path');
 
 export class SimpelRouter {
-    constructor() {
+    constructor(config) {
+        for (let key in config) {
+            this[key] = config[key]
+        }
         this.routes = {}
         this.historyState = {}
         const importAll = requireContext => requireContext.keys().forEach(key => {
@@ -41,8 +44,13 @@ export class SimpelRouter {
                 // We're at the root, load routes/Index.html
                 this.routerElement.innerHTML = this.routes['index']
             } else if (this.route.length == 1) {
-                // console.log(`load ${[this.route[0]]} index`);
-                this.routerElement.innerHTML = this.routes[this.route[0]]['index']
+                if (!this.routes[this.route[0]]) {
+                    console.log(this.routes);
+                    this.routerElement.innerHTML = this.routes['index']
+                    this.route[0] = this.rootResource + '/' + this.route[0]
+                } else {
+                    this.routerElement.innerHTML = this.routes[this.route[0]]['index']
+                }
             } else {
                 // console.log('load ${[this.route[0]]} id', this.routes[this.route[0]]['id']);
                 this.routerElement.innerHTML = this.routes[this.route[0]]['id']

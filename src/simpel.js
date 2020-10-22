@@ -106,7 +106,8 @@ export class Simpel {
 
 		var model;
 		if (this.router) {
-			model = this.router.historyState.model
+            console.log(this.router);
+			model = (this.router.historyState.model) ? this.router.historyState.model : (this.router.defaultRoute) ? this.router.defaultRoute : undefined
 			model += (this.router.historyState.id) ? '/' + this.router.historyState.id : ''
 			// console.log(this.router.routerElement);
 		}
@@ -125,6 +126,8 @@ export class Simpel {
                     })
                 })
     		})
+        } else {
+            throw new Error("Model not defined!!!")
         }
     }
 
@@ -432,11 +435,15 @@ export class Simpel {
         return new Promise(async (resolve, reject) => {
             if (tag === 'undefined') reject('Error')
             try {
-                let response = await API.get(this.apiName, `/${tag}`)
+                console.log(tag);
+                tag = (tag.charAt(0) != '/') ? '/' + tag : tag
+                let response = await API.get(this.apiName, `${tag}`)
                 console.log(response);
                 let returnData = {};
                 if (Array.isArray(response)) {
                     returnData[tag] = response
+                } else if ('Item' in response) {
+                    returnData = response.Item
                 } else {
                     returnData = response
                 }

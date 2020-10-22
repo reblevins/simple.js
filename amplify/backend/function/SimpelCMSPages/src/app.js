@@ -61,19 +61,19 @@ const convertUrlType = (param, type) => {
 app.get(path, function(req, res) {
     let queryParams = {
         TableName: tableName,
-        FilterExpression: "objectType = :objectType",
-        ExpressionAttributeValues: {
-            ':objectType': 'pages'
-        }
+        // FilterExpression: "objectType = :objectType",
+        // ExpressionAttributeValues: {
+        //     ':objectType': 'pages'
+        // }
     }
 
-    if (req.apiGateway.event.requestContext.identity.cognitoAuthenticationType != "authenticated") {
-        queryParams.FilterExpression = "published = :published or publishedAt <= :today";
-        queryParams.ExpressionAttributeValues = {
-            ':published': true,
-            ':today': Date.now()
-        }
-    }
+    // if (req.apiGateway.event.requestContext.identity.cognitoAuthenticationType != "authenticated") {
+    //     queryParams.FilterExpression = "published = :published or publishedAt <= :today";
+    //     queryParams.ExpressionAttributeValues = {
+    //         ':published': true,
+    //         ':today': Date.now()
+    //     }
+    // }
 
 
     dynamodb.scan(queryParams, (err, data) => {
@@ -81,7 +81,7 @@ app.get(path, function(req, res) {
             res.statusCode = 500;
             res.json({error: 'Could not load items: ' + err, queryParams});
         } else {
-            res.json({ pages: data.Items, queryParams });
+            res.json({ pages: data.Items, queryParams, event: req.apiGateway.event });
         }
     });
 });
@@ -90,14 +90,16 @@ app.get(path, function(req, res) {
 * HTTP Get method for get single object *
 *****************************************/
 
-app.get(path + hashKeyPath, function(req, res) {
+app.get(path + sortKeyPath, function(req, res) {
     var params = {};
     if (userIdPresent && req.apiGateway) {
         params[partitionKeyName] = req.apiGateway.event.requestContext.identity.cognitoIdentityId || UNAUTH;
     } else {
-        params[partitionKeyName] = req.params[partitionKeyName];
+        params[partitionKeyName] = path;
+        params[sortKeyName] = req.params[sortKeyName];
         try {
-            params[partitionKeyName] = convertUrlType(req.params[partitionKeyName], partitionKeyType);
+            params[partitionKeyName] = path.split('/')[1];
+            params[sortKeyName] = convertUrlType(req.params[sortKeyName], sortKeyType);
         } catch(err) {
             res.statusCode = 500;
             res.json({error: 'Wrong column type ' + err});
@@ -112,12 +114,12 @@ app.get(path + hashKeyPath, function(req, res) {
     dynamodb.get(getItemParams,(err, data) => {
         if(err) {
             res.statusCode = 500;
-            res.json({error: 'Could not load items: ' + err.message});
+            res.json({error: 'Could not load items: ' + err.message, params });
         } else {
             if (data.Item) {
-                res.json(data.Item);
+                res.json({ Item: data.Item, params });
             } else {
-                res.json(data) ;
+                res.json({ data, params }) ;
             }
         }
     });
@@ -133,6 +135,9 @@ app.put(path, function(req, res) {
     if (userIdPresent) {
         req.body['userId'] = req.apiGateway.event.requestContext.identity.cognitoIdentityId || UNAUTH;
     }
+
+    req.body.createdAt = Date.now()
+    req.body.updatedAt = Date.now()
 
     let putItemParams = {
         TableName: tableName,
@@ -157,6 +162,8 @@ app.post(path, function(req, res) {
     if (userIdPresent) {
         req.body['userId'] = req.apiGateway.event.requestContext.identity.cognitoIdentityId || UNAUTH;
     }
+
+    req.body.updatedAt = Date.now()
 
     let putItemParams = {
         TableName: tableName,
